@@ -1,0 +1,38 @@
+sequenceDiagram
+    actor Patient
+    participant Page as Registration Page<br/>(register.php)
+    participant Process as Registration Processing<br/>(register_process.php)
+    participant DBConn as Database Connection<br/>(database.php)
+    participant DB as MySQL Database<br/>(users table)
+
+    Patient->>Page: Open registration page
+    Page-->>Patient: Display registration form
+
+    Patient->>Page: Enter full name, age, phone,<br/>email, password, confirm password
+
+    Page->>Page: Perform JavaScript validation
+
+    Page->>Process: Submit registration data (POST)
+
+    Process->>Process: Perform server-side validation
+
+    Process->>DBConn: Request database connection
+    DBConn->>DB: Connect to clinic_appointment_system
+    DB-->>DBConn: Connection successful
+
+    Process->>DB: Check whether email already exists
+    DB-->>Process: Return email-check result
+
+    alt Data valid and email is unique
+        Process->>Process: Hash password using password_hash()
+        Process->>Process: Set role = patient<br/>Set account_status = pending
+
+        Process->>DB: INSERT new patient account
+        DB-->>Process: Account inserted successfully
+
+        Process-->>Page: Redirect with success message
+        Page-->>Patient: Registration submitted successfully<br/>Awaiting administrator approval
+    else Invalid data or duplicate email
+        Process-->>Page: Redirect with validation errors
+        Page-->>Patient: Display registration error message
+    end
