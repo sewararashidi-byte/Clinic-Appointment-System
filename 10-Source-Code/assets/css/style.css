@@ -1,0 +1,83 @@
+body {
+    min-height: 100vh;
+    background:
+        linear-gradient(
+            135deg,
+            rgba(239, 248, 255, 0.96),
+            rgba(247, 252, 250, 0.96)
+        );
+    font-family: Arial, Helvetica, sans-serif;
+    color: #243447;
+}
+
+.card {
+    border-radius: 18px;
+}
+
+.card-body {
+    border-radius: 18px;
+}
+
+h1 {
+    font-weight: 700;
+    color: #1f4e79;
+}
+
+.form-label {
+    font-weight: 600;
+    color: #34495e;
+}
+
+.form-control {
+    min-height: 48px;
+    border-radius: 10px;
+    border: 1px solid #ced4da;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.form-control:focus {
+    border-color: #5b9bd5;
+    box-shadow: 0 0 0 0.2rem rgba(91, 155, 213, 0.18);
+}
+
+.btn-primary {
+    min-height: 50px;
+    border-radius: 10px;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+}
+
+.alert {
+    border-radius: 10px;
+}
+
+.form-text {
+    font-size: 0.85rem;
+}
+
+a {
+    text-decoration: none;
+    font-weight: 600;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+@media (max-width: 576px) {
+    body {
+        background: #f5f9fc;
+    }
+
+    .container {
+        padding-left: 16px;
+        padding-right: 16px;
+    }
+
+    .card-body {
+        padding: 24px !important;
+    }
+
+    h1 {
+        font-size: 1.6rem;
+    }
