@@ -1,0 +1,47 @@
+sequenceDiagram
+    actor User as Registered User
+    participant Page as Login Page<br/>(login.php)
+    participant Process as Login Processing<br/>(login_process.php)
+    participant DBConn as Database Connection<br/>(database.php)
+    participant DB as MySQL Database<br/>(users table)
+
+    User->>Page: Open login page
+    Page-->>User: Display login form
+
+    User->>Page: Enter email and password
+    Page->>Process: Submit login credentials (POST)
+
+    Process->>Process: Validate required fields and email format
+
+    Process->>DBConn: Request database connection
+    DBConn->>DB: Connect to clinic_appointment_system
+    DB-->>DBConn: Connection successful
+
+    Process->>DB: Find user by email
+    DB-->>Process: Return matching user record
+
+    alt User not found
+        Process-->>Page: Redirect with login error
+        Page-->>User: Display "Invalid email or password"
+    else User found
+        Process->>Process: Verify password using password_verify()
+
+        alt Password invalid
+            Process-->>Page: Redirect with login error
+            Page-->>User: Display "Invalid email or password"
+        else Password valid
+            Process->>Process: Check account_status
+
+            alt account_status = pending
+                Process-->>Page: Redirect with approval message
+                Page-->>User: Display "Awaiting administrator approval"
+            else account_status = rejected
+                Process-->>Page: Redirect with rejection message
+                Page-->>User: Display "Account not approved"
+            else account_status = active
+                Process->>Process: Regenerate session ID
+                Process->>Process: Store user ID, name, email and role in session
+                Process-->>User: Redirect according to user role
+            end
+        end
+    end
