@@ -1,0 +1,38 @@
+sequenceDiagram
+    actor User as Authenticated User
+    participant Dashboard as Requested Dashboard
+    participant Auth as Authorization Component<br/>(auth.php)
+    participant Session as Session
+    participant RoleDash as Role-Specific Dashboard
+
+    User->>Dashboard: Request protected dashboard
+    Dashboard->>Auth: Load authorization check
+
+    Auth->>Session: Check authenticated session
+
+    alt No authenticated session
+        Auth-->>User: Redirect to login page
+        User->>User: Display "Please log in to access this page"
+    else Authenticated session exists
+        Auth->>Session: Read user role
+        Session-->>Auth: Return role
+
+        Auth->>Auth: Compare role with allowed roles
+
+        alt Role is authorized
+            Auth-->>Dashboard: Allow access
+            Dashboard-->>User: Display requested dashboard
+        else Role is not authorized
+            Auth->>Auth: Store unauthorized-access message
+
+            alt role = patient
+                Auth-->>RoleDash: Redirect to patient-dashboard.php
+            else role = doctor
+                Auth-->>RoleDash: Redirect to doctor-dashboard.php
+            else role = receptionist or administrator
+                Auth-->>RoleDash: Redirect to admin-dashboard.php
+            end
+
+            RoleDash-->>User: Display correct role dashboard
+        end
+    end
