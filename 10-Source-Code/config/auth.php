@@ -14,17 +14,17 @@ function redirectToRoleDashboard(): void
 
     switch ($role) {
         case 'patient':
-            header('Location: patient-dashboard.php');
-            exit;
+    header('Location: ../dashboards/patient-dashboard.php');
+    exit;
 
-        case 'doctor':
-            header('Location: doctor-dashboard.php');
-            exit;
+case 'doctor':
+    header('Location: ../dashboards/doctor-dashboard.php');
+    exit;
 
-        case 'receptionist':
-        case 'administrator':
-            header('Location: admin-dashboard.php');
-            exit;
+case 'receptionist':
+case 'administrator':
+    header('Location: ../dashboards/admin-dashboard.php');
+    exit;
 
         default:
             session_unset();
