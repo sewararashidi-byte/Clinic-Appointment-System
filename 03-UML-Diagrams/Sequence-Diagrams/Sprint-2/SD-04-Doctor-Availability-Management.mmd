@@ -1,0 +1,84 @@
+sequenceDiagram
+    autonumber
+
+    actor Doctor
+    participant Dashboard as Doctor Dashboard
+    participant Page as Manage Availability Page
+    participant Auth as auth.php
+    participant Action as Availability Action
+    participant DB as MySQL Database
+
+    Doctor->>Dashboard: Click Manage Availability
+    Dashboard->>Page: Open availability.php
+
+    Page->>Auth: requireRole(['doctor'])
+
+    alt Doctor is authorized
+        Auth-->>Page: Access granted
+
+        Page->>DB: Request doctor's availability records
+        DB-->>Page: Return availability records
+        Page-->>Doctor: Display availability management page
+
+        alt Create Availability
+            Doctor->>Page: Enter date, start time, end time
+            Doctor->>Page: Click Add Availability
+            Page->>Action: POST availability data
+            Action->>Auth: Verify doctor role
+
+            alt Valid doctor and valid input
+                Auth-->>Action: Authorized
+                Action->>DB: INSERT doctor availability
+                DB-->>Action: Insert successful
+                Action-->>Dashboard: Redirect with success message
+                Dashboard-->>Doctor: Display availability added successfully
+            else Invalid availability input
+                Action-->>Dashboard: Redirect with validation error
+                Dashboard-->>Doctor: Display error message
+            end
+
+        else Update Availability
+            Doctor->>Page: Modify date or time
+            Doctor->>Page: Click Update
+            Page->>Action: POST availability ID and updated data
+            Action->>Auth: Verify doctor role
+            Auth-->>Action: Authorized
+            Action->>DB: Verify availability belongs to doctor
+            DB-->>Action: Ownership confirmed
+
+            alt Valid update
+                Action->>DB: UPDATE doctor availability
+                DB-->>Action: Update successful
+                Action-->>Dashboard: Redirect with success message
+                Dashboard-->>Doctor: Display availability updated successfully
+            else Invalid update
+                Action-->>Dashboard: Redirect with error message
+                Dashboard-->>Doctor: Display validation or access error
+            end
+
+        else Delete Availability
+            Doctor->>Page: Click Delete
+            Page-->>Doctor: Ask for deletion confirmation
+            Doctor->>Page: Confirm deletion
+            Page->>Action: POST availability ID
+            Action->>Auth: Verify doctor role
+            Auth-->>Action: Authorized
+            Action->>DB: Verify availability belongs to doctor
+            DB-->>Action: Ownership confirmed
+
+            alt Record belongs to doctor
+                Action->>DB: DELETE doctor availability
+                DB-->>Action: Delete successful
+                Action-->>Dashboard: Redirect with success message
+                Dashboard-->>Doctor: Display availability deleted successfully
+            else Record not found or access denied
+                Action-->>Dashboard: Redirect with error message
+                Dashboard-->>Doctor: Display access error
+            end
+        end
+
+    else User is not a doctor
+        Auth-->>Page: Access denied
+        Page-->>Dashboard: Redirect to role dashboard
+        Dashboard-->>Doctor: Display unauthorized access message
+    end
