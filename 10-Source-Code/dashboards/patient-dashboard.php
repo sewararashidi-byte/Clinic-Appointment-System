@@ -11,6 +11,7 @@ $fullName = $_SESSION['full_name'] ?? 'Patient';
 
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -29,7 +30,13 @@ $fullName = $_SESSION['full_name'] ?? 'Patient';
 
     <?php if ($accessError !== ''): ?>
         <div class="alert alert-warning">
-            <?php echo htmlspecialchars($accessError); ?>
+            <?php
+            echo htmlspecialchars(
+                $accessError,
+                ENT_QUOTES,
+                'UTF-8'
+            );
+            ?>
         </div>
     <?php endif; ?>
 
@@ -39,17 +46,47 @@ $fullName = $_SESSION['full_name'] ?? 'Patient';
 
         <p>
             Welcome,
-            <strong><?php echo htmlspecialchars($fullName); ?></strong>
+            <strong>
+                <?php
+                echo htmlspecialchars(
+                    $fullName,
+                    ENT_QUOTES,
+                    'UTF-8'
+                );
+                ?>
+            </strong>
         </p>
 
         <p class="text-muted">
             You are logged in as a patient.
         </p>
 
-        <div>
-            <a href="../logout.php" class="btn btn-danger">
+        <hr>
+
+        <h4>Find a Doctor</h4>
+
+        <p class="text-muted">
+            Search for doctors by name or medical specialty,
+            and view their professional information
+            and current availability.
+        </p>
+
+        <div class="d-flex flex-wrap gap-2 mt-3">
+
+            <a
+                href="../patient/doctor-search.php"
+                class="btn btn-primary"
+            >
+                Find a Doctor
+            </a>
+
+            <a
+                href="../logout.php"
+                class="btn btn-danger"
+            >
                 Logout
             </a>
+
         </div>
 
     </div>
@@ -57,4 +94,5 @@ $fullName = $_SESSION['full_name'] ?? 'Patient';
 </div>
 
 </body>
+
 </html>
