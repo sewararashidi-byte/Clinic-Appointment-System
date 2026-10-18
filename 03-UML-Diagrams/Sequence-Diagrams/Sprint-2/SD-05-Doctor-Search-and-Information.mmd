@@ -1,0 +1,65 @@
+
+sequenceDiagram
+    autonumber
+
+    actor Patient
+    participant Search as Doctor Search Page
+    participant Auth as Authentication
+    participant Repo as Doctor Repository
+    participant DB as MySQL Database
+    participant InfoPage as Doctor Details Page
+
+    Patient->>Search: Open Doctor Search page
+    Search->>Auth: Verify patient role
+
+    alt Authorized patient
+        Auth-->>Search: Access granted
+
+        Patient->>Search: Enter doctor name or specialty
+        Patient->>Search: Submit search
+
+        Search->>Repo: searchDoctors(name, specialty)
+        Repo->>DB: Retrieve active doctors and profiles
+        DB-->>Repo: Return matching doctor records
+        Repo-->>Search: Return search results
+
+        alt Matching doctors found
+            Search-->>Patient: Display matching doctors
+
+            Patient->>Search: Click View Doctor
+            Search->>InfoPage: Open doctor details using doctor ID
+
+            InfoPage->>Auth: Verify patient role
+            Auth-->>InfoPage: Access granted
+
+            InfoPage->>Repo: getDoctorById(doctorId)
+            Repo->>DB: Retrieve selected doctor information
+            DB-->>Repo: Return doctor profile
+            Repo-->>InfoPage: Return doctor data
+
+            alt Doctor exists and is active
+                InfoPage-->>Patient: Display professional information
+
+                InfoPage->>Repo: getDoctorAvailability(doctorId)
+                Repo->>DB: Retrieve current and future availability
+                DB-->>Repo: Return availability records
+                Repo-->>InfoPage: Return availability list
+
+                alt Availability records found
+                    InfoPage-->>Patient: Display available dates and times
+                else No current availability
+                    InfoPage-->>Patient: Show no availability message
+                end
+
+            else Invalid or unavailable doctor
+                InfoPage-->>Patient: Display doctor not found message
+            end
+
+        else No matching doctors
+            Search-->>Patient: Display no matching doctors message
+        end
+
+    else Unauthorized user
+        Auth-->>Search: Access denied
+        Search-->>Patient: Redirect to appropriate page
+    end
