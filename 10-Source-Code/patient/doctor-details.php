@@ -1,4 +1,3 @@
-
 <?php
 
 require_once __DIR__ . '/../config/auth.php';
@@ -7,6 +6,7 @@ requireRole(['patient']);
 
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../includes/doctor_repository.php';
+require_once __DIR__ . '/../includes/appointment_repository.php';
 
 // Retrieve booking messages from the session.
 $bookingSuccess = $_SESSION['booking_success'] ?? '';
@@ -15,6 +15,18 @@ $bookingError = $_SESSION['booking_error'] ?? '';
 // Clear messages so they appear only once.
 unset($_SESSION['booking_success']);
 unset($_SESSION['booking_error']);
+
+// Create a security token for appointment booking forms.
+if (
+    empty($_SESSION['booking_csrf_token']) ||
+    !is_string($_SESSION['booking_csrf_token'])
+) {
+    $_SESSION['booking_csrf_token'] = bin2hex(
+        random_bytes(32)
+    );
+}
+
+$bookingToken = $_SESSION['booking_csrf_token'];
 
 // Get the selected doctor ID from the URL.
 $doctorId = filter_var(
@@ -25,6 +37,7 @@ $doctorId = filter_var(
 
 $doctor = null;
 $availability = [];
+$appointmentSlots = [];
 
 // Retrieve information only for a valid doctor ID.
 if (is_int($doctorId)) {
@@ -32,7 +45,20 @@ if (is_int($doctorId)) {
     $doctor = getDoctorById($conn, $doctorId);
 
     if ($doctor !== null) {
-        $availability = getDoctorAvailability($conn, $doctorId);
+
+        // Retrieve the doctor's availability periods.
+        $availability = getDoctorAvailability(
+            $conn,
+            $doctorId
+        );
+
+        // Generate available appointment slots.
+        // Already-booked slots are excluded.
+        $appointmentSlots = getAvailableAppointmentSlots(
+            $conn,
+            $doctorId,
+            $availability
+        );
     }
 }
 
@@ -75,6 +101,8 @@ $conn->close();
 
 <div class="container mt-5 mb-5">
 
+    <!-- Page Header -->
+
     <div class="d-flex justify-content-between align-items-center mb-4">
 
         <h2>Doctor Information and Availability</h2>
@@ -116,12 +144,14 @@ $conn->close();
 
     <?php endif; ?>
 
-    <!-- Check Doctor -->
+    <!-- Check Whether Doctor Exists -->
 
     <?php if ($doctor === null): ?>
 
         <div class="alert alert-warning">
+
             Doctor not found or unavailable.
+
         </div>
 
     <?php else: ?>
@@ -141,22 +171,41 @@ $conn->close();
             <div class="card-body">
 
                 <h3 class="mb-3">
-                    <?php echo escapeHtml($doctor['full_name']); ?>
+
+                    <?php
+                    echo escapeHtml($doctor['full_name']);
+                    ?>
+
                 </h3>
 
                 <p>
+
                     <strong>Medical Specialty:</strong>
-                    <?php echo escapeHtml($doctor['specialty']); ?>
+
+                    <?php
+                    echo escapeHtml($doctor['specialty']);
+                    ?>
+
                 </p>
 
                 <p>
+
                     <strong>Qualifications:</strong>
-                    <?php echo escapeHtml($doctor['qualifications']); ?>
+
+                    <?php
+                    echo escapeHtml($doctor['qualifications']);
+                    ?>
+
                 </p>
 
                 <p>
+
                     <strong>Years of Experience:</strong>
-                    <?php echo escapeHtml($doctor['years_experience']); ?>
+
+                    <?php
+                    echo escapeHtml($doctor['years_experience']);
+                    ?>
+
                 </p>
 
                 <hr>
@@ -164,7 +213,9 @@ $conn->close();
                 <h5>Professional Biography</h5>
 
                 <p>
+
                     <?php
+
                     if (!empty($doctor['biography'])) {
 
                         echo nl2br(
@@ -176,16 +227,18 @@ $conn->close();
                         echo 'No professional biography is available.';
 
                     }
+
                     ?>
+
                 </p>
 
             </div>
 
         </div>
 
-        <!-- Doctor Availability -->
+        <!-- Doctor Availability Table -->
 
-        <div class="card shadow-sm">
+        <div class="card shadow-sm mb-4">
 
             <div class="card-header bg-success text-white">
 
@@ -237,14 +290,17 @@ $conn->close();
                                     <tr>
 
                                         <td>
+
                                             <?php
                                             echo escapeHtml(
                                                 $entry['availability_date']
                                             );
                                             ?>
+
                                         </td>
 
                                         <td>
+
                                             <?php
                                             echo escapeHtml(
                                                 date(
@@ -255,9 +311,11 @@ $conn->close();
                                                 )
                                             );
                                             ?>
+
                                         </td>
 
                                         <td>
+
                                             <?php
                                             echo escapeHtml(
                                                 date(
@@ -268,15 +326,18 @@ $conn->close();
                                                 )
                                             );
                                             ?>
+
                                         </td>
 
                                         <td>
+
                                             <?php
                                             echo escapeHtml(
                                                 $entry['slot_duration_minutes']
                                             );
                                             ?>
                                             minutes
+
                                         </td>
 
                                     </tr>
@@ -289,11 +350,201 @@ $conn->close();
 
                     </div>
 
-                    <p class="text-muted small">
+                <?php endif; ?>
 
-                        Individual appointment-slot selection
-                        will be connected to this page
-                        during Sprint 2 Day 3.
+            </div>
+
+        </div>
+
+        <!-- Patient Appointment Booking Section -->
+
+        <div class="card shadow-sm mb-4">
+
+            <div class="card-header bg-primary text-white">
+
+                <h4 class="mb-0">
+                    Book an Appointment
+                </h4>
+
+            </div>
+
+            <div class="card-body">
+
+                <p class="text-muted">
+
+                    Choose one of the available appointment
+                    times below to book an appointment
+                    with this doctor.
+
+                </p>
+
+                <!-- No Available Slots -->
+
+                <?php if (empty($appointmentSlots)): ?>
+
+                    <div class="alert alert-info mb-0">
+
+                        No appointment slots are currently
+                        available for this doctor.
+
+                        Please check again later.
+
+                    </div>
+
+                <?php else: ?>
+
+                    <!-- Available Appointment Slots -->
+
+                    <div class="table-responsive">
+
+                        <table class="table table-bordered table-hover align-middle">
+
+                            <thead class="table-light">
+
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Start Time</th>
+                                    <th>End Time</th>
+                                    <th>Action</th>
+                                </tr>
+
+                            </thead>
+
+                            <tbody>
+
+                                <?php foreach ($appointmentSlots as $slot): ?>
+
+                                    <tr>
+
+                                        <!-- Appointment Date -->
+
+                                        <td>
+
+                                            <?php
+                                            echo escapeHtml(
+                                                date(
+                                                    'M j, Y',
+                                                    strtotime(
+                                                        $slot['appointment_date']
+                                                    )
+                                                )
+                                            );
+                                            ?>
+
+                                        </td>
+
+                                        <!-- Appointment Start Time -->
+
+                                        <td>
+
+                                            <?php
+                                            echo escapeHtml(
+                                                date(
+                                                    'g:i A',
+                                                    strtotime(
+                                                        $slot['start_time']
+                                                    )
+                                                )
+                                            );
+                                            ?>
+
+                                        </td>
+
+                                        <!-- Appointment End Time -->
+
+                                        <td>
+
+                                            <?php
+                                            echo escapeHtml(
+                                                date(
+                                                    'g:i A',
+                                                    strtotime(
+                                                        $slot['end_time']
+                                                    )
+                                                )
+                                            );
+                                            ?>
+
+                                        </td>
+
+                                        <!-- Appointment Booking Form -->
+
+                                        <td>
+
+                                            <form
+                                                method="POST"
+                                                action="../actions/appointment_book.php"
+                                                class="m-0"
+                                            >
+
+                                                <!-- Selected Doctor -->
+
+                                                <input
+                                                    type="hidden"
+                                                    name="doctor_id"
+                                                    value="<?php echo (int) $doctorId; ?>"
+                                                >
+
+                                                <!-- Selected Availability -->
+
+                                                <input
+                                                    type="hidden"
+                                                    name="availability_id"
+                                                    value="<?php echo (int) $slot['availability_id']; ?>"
+                                                >
+
+                                                <!-- Selected Date -->
+
+                                                <input
+                                                    type="hidden"
+                                                    name="appointment_date"
+                                                    value="<?php echo escapeHtml($slot['appointment_date']); ?>"
+                                                >
+
+                                                <!-- Selected Start Time -->
+
+                                                <input
+                                                    type="hidden"
+                                                    name="start_time"
+                                                    value="<?php echo escapeHtml($slot['start_time']); ?>"
+                                                >
+
+                                                <!-- CSRF Security Token -->
+
+                                                <input
+                                                    type="hidden"
+                                                    name="csrf_token"
+                                                    value="<?php echo escapeHtml($bookingToken); ?>"
+                                                >
+
+                                                <!-- Booking Button -->
+
+                                                <button
+                                                    type="submit"
+                                                    class="btn btn-primary btn-sm"
+                                                >
+                                                    Book Appointment
+                                                </button>
+
+                                            </form>
+
+                                        </td>
+
+                                    </tr>
+
+                                <?php endforeach; ?>
+
+                            </tbody>
+
+                        </table>
+
+                    </div>
+
+                    <p class="text-muted small mb-0">
+
+                        Only available appointment slots are
+                        displayed. Once a slot is booked,
+                        it will no longer appear as available.
 
                     </p>
 
