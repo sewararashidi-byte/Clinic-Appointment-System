@@ -1,3 +1,4 @@
+
 <?php
 
 require_once __DIR__ . '/../config/auth.php';
@@ -6,6 +7,14 @@ requireRole(['patient']);
 
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../includes/doctor_repository.php';
+
+// Retrieve booking messages from the session.
+$bookingSuccess = $_SESSION['booking_success'] ?? '';
+$bookingError = $_SESSION['booking_error'] ?? '';
+
+// Clear messages so they appear only once.
+unset($_SESSION['booking_success']);
+unset($_SESSION['booking_error']);
 
 // Get the selected doctor ID from the URL.
 $doctorId = filter_var(
@@ -27,7 +36,7 @@ if (is_int($doctorId)) {
     }
 }
 
-// Escape database values before displaying them.
+// Escape output before displaying it.
 function escapeHtml($value): string
 {
     return htmlspecialchars(
@@ -79,6 +88,36 @@ $conn->close();
 
     </div>
 
+    <!-- Booking Success Message -->
+
+    <?php if ($bookingSuccess !== ''): ?>
+
+        <div class="alert alert-success" role="alert">
+
+            <strong>Success!</strong>
+
+            <?php echo escapeHtml($bookingSuccess); ?>
+
+        </div>
+
+    <?php endif; ?>
+
+    <!-- Booking Error Message -->
+
+    <?php if ($bookingError !== ''): ?>
+
+        <div class="alert alert-danger" role="alert">
+
+            <strong>Booking Error:</strong>
+
+            <?php echo escapeHtml($bookingError); ?>
+
+        </div>
+
+    <?php endif; ?>
+
+    <!-- Check Doctor -->
+
     <?php if ($doctor === null): ?>
 
         <div class="alert alert-warning">
@@ -92,9 +131,11 @@ $conn->close();
         <div class="card shadow-sm mb-4">
 
             <div class="card-header bg-primary text-white">
+
                 <h4 class="mb-0">
                     Doctor Professional Information
                 </h4>
+
             </div>
 
             <div class="card-body">
@@ -125,11 +166,15 @@ $conn->close();
                 <p>
                     <?php
                     if (!empty($doctor['biography'])) {
+
                         echo nl2br(
                             escapeHtml($doctor['biography'])
                         );
+
                     } else {
+
                         echo 'No professional biography is available.';
+
                     }
                     ?>
                 </p>
@@ -155,15 +200,19 @@ $conn->close();
                 <?php if (empty($availability)): ?>
 
                     <div class="alert alert-info mb-0">
+
                         No current or future availability
                         is listed for this doctor.
+
                     </div>
 
                 <?php else: ?>
 
                     <p class="text-muted">
+
                         The following availability has been
                         provided by the doctor.
+
                     </p>
 
                     <div class="table-responsive">
@@ -200,7 +249,9 @@ $conn->close();
                                             echo escapeHtml(
                                                 date(
                                                     'g:i A',
-                                                    strtotime($entry['start_time'])
+                                                    strtotime(
+                                                        $entry['start_time']
+                                                    )
                                                 )
                                             );
                                             ?>
@@ -211,7 +262,9 @@ $conn->close();
                                             echo escapeHtml(
                                                 date(
                                                     'g:i A',
-                                                    strtotime($entry['end_time'])
+                                                    strtotime(
+                                                        $entry['end_time']
+                                                    )
                                                 )
                                             );
                                             ?>
@@ -237,9 +290,11 @@ $conn->close();
                     </div>
 
                     <p class="text-muted small">
+
                         Individual appointment-slot selection
-                        and booking will be implemented in
-                        Sprint 2 Day 3.
+                        will be connected to this page
+                        during Sprint 2 Day 3.
+
                     </p>
 
                 <?php endif; ?>

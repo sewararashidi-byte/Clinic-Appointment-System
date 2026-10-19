@@ -70,3 +70,41 @@ CREATE TABLE IF NOT EXISTS doctor_availability (
     INDEX idx_doctor_availability_date
         (doctor_id, availability_date)
 );
+
+
+-- Sprint 2 - US-07: Appointment Booking
+
+CREATE TABLE IF NOT EXISTS appointments (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+
+    patient_id INT UNSIGNED NOT NULL,
+    doctor_id INT UNSIGNED NOT NULL,
+    availability_id INT UNSIGNED NOT NULL,
+
+    appointment_date DATE NOT NULL,
+    start_time TIME NOT NULL,
+    end_time TIME NOT NULL,
+
+    status ENUM('confirmed', 'cancelled')
+        NOT NULL DEFAULT 'confirmed',
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_appointment_patient
+        FOREIGN KEY (patient_id)
+        REFERENCES users(id)
+        ON DELETE RESTRICT,
+
+    CONSTRAINT fk_appointment_doctor
+        FOREIGN KEY (doctor_id)
+        REFERENCES users(id)
+        ON DELETE RESTRICT,
+
+    CONSTRAINT fk_appointment_availability
+        FOREIGN KEY (availability_id)
+        REFERENCES doctor_availability(id)
+        ON DELETE RESTRICT,
+
+    CONSTRAINT uq_doctor_appointment_slot
+        UNIQUE (doctor_id, appointment_date, start_time)
+);
