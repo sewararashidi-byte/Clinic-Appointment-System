@@ -1,0 +1,64 @@
+
+sequenceDiagram
+    autonumber
+
+    actor Patient
+    participant Page as Doctor Details Page
+    participant DoctorRepo as Doctor Repository
+    participant SlotRepo as Appointment Repository
+    participant Booking as Booking Action
+    participant DB as MySQL Database
+
+    Patient->>Page: Open Doctor Details
+    Page->>DoctorRepo: getDoctorById(doctorId)
+    DoctorRepo->>DB: Retrieve active doctor profile
+    DB-->>DoctorRepo: Doctor information
+    DoctorRepo-->>Page: Doctor details
+
+    alt Doctor exists
+        Page->>DoctorRepo: getDoctorAvailability(doctorId)
+        DoctorRepo->>DB: Retrieve future availability
+        DB-->>DoctorRepo: Availability records
+        DoctorRepo-->>Page: Availability periods
+
+        Page->>SlotRepo: getAvailableAppointmentSlots()
+        SlotRepo->>DB: Retrieve confirmed appointments
+        DB-->>SlotRepo: Booked appointment times
+        SlotRepo-->>Page: Available appointment slots
+
+        Page-->>Patient: Display doctor and available slots
+
+        Patient->>Page: Click Book Appointment
+        Page->>Booking: POST selected slot and CSRF token
+
+        Booking->>Booking: Check patient role and validate request
+
+        alt Invalid request or security token
+            Booking-->>Patient: Redirect with booking error
+        else Valid booking request
+            Booking->>DB: Begin transaction and lock doctor
+            DB-->>Booking: Doctor record
+
+            Booking->>DoctorRepo: Recheck doctor availability
+            DoctorRepo->>DB: Retrieve availability records
+            DB-->>DoctorRepo: Current availability
+            DoctorRepo-->>Booking: Availability periods
+
+            Booking->>SlotRepo: Recheck available slots
+            SlotRepo->>DB: Retrieve confirmed appointments
+            DB-->>SlotRepo: Current booked times
+            SlotRepo-->>Booking: Remaining available slots
+
+            alt Selected slot is available
+                Booking->>DB: Insert confirmed appointment
+                Booking->>DB: Commit transaction
+                Booking-->>Patient: Redirect with success message
+            else Slot unavailable
+                Booking->>DB: Roll back transaction
+                Booking-->>Patient: Redirect with booking error
+            end
+        end
+
+    else Doctor not found
+        Page-->>Patient: Display doctor unavailable message
+    end
