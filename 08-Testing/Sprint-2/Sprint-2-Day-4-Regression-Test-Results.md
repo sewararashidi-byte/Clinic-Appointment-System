@@ -5,7 +5,7 @@
 **Methodology:** Scrum  
 **Sprint:** Sprint 2  
 **Date:** October 20, 2026  
-**Developer / Tester:** Sewara Rashidi  
+**Developer / Tester:** Sewara Rashidi  and Sonbol Almas
 **Testing Environment:** PHP, MySQL, XAMPP, and Web Browser  
 **Testing Type:** Manual Integration and Regression Testing
 
@@ -36,7 +36,12 @@ The tests examined doctor search, professional information display, appointment 
 | Test accounts | Active patient and test doctor accounts |
 | Test doctor | Test Doctor, Doctor ID 3 |
 
-All tests were performed against Sewara's local development environment.
+
+Testing was performed on Sewara's and Sonbol's separate
+local development environments. Each developer used
+XAMPP, PHP, and MySQL to verify the functionality
+assigned to them.
+
 
 ## 3. Regression Test Results
 
@@ -108,47 +113,155 @@ Both appointments remained present after the rejected availability update and de
 
 This confirms that the tested operations did not remove or alter the existing appointment records.
 
+## Sonbol — T2.8 Appointment Date Selection Testing
+
+**Test Date:** October 20, 2026  
+**Developer / Tester:** Sonbol Almas  
+**User Story:** US-07 — Available Appointment Dates and Time Slots  
+**Sprint Task:** T2.8 — Appointment Date Selection and Filtering  
+**Testing Environment:** PHP, MySQL, XAMPP, and Web Browser
+
+### Testing Objective
+
+The objective was to verify that patients can select an appointment date, view available time slots for that date, clear the selected date filter, and successfully book an appointment without affecting existing booking functionality.
+
+### Test Results
+
+| Test ID | Test Scenario | Actual Result | Status |
+|---|---|---|---|
+| D4-T13 | Select October 24, 2026, when no appointment slots are available | The system displayed a date-specific no-available-slots message | PASS |
+| D4-T14 | Select October 25, 2026, when the doctor has availability from 10:00 AM to 11:00 AM | Two available 30-minute slots appeared with booking buttons | PASS |
+| D4-T15 | Click Show All Dates after selecting a date | The date filter was cleared and available appointment slots remained visible | PASS |
+| D4-T16 | Book the October 25 appointment from 10:00 AM to 10:30 AM after filtering by date | Booking succeeded, the selected slot disappeared, and the remaining slot stayed available | PASS |
+| D4-T17 | Verify the new appointment in MySQL | The October 25 appointment was stored with confirmed status; both existing test appointments were present | PASS |
+| D4-T18 | Select October 25 again after booking | The booked 10:00–10:30 AM slot was hidden, while the 10:30–11:00 AM slot remained available | PASS |
+
+### Database Verification
+
+Sonbol verified the following new appointment in her local MySQL database:
+
+| Field | Verified Value |
+|---|---|
+| Doctor ID | 3 |
+| Appointment date | 2026-10-25 |
+| Start time | 10:00:00 |
+| End time | 10:30:00 |
+| Status | confirmed |
+
+The previously booked October 20 appointment was also still present.
+
+### Testing Conclusion
+
+All six recorded T2.8 manual tests passed.
+
+The results confirm that appointment date selection and filtering function correctly in the tested scenarios and remain integrated with the existing appointment-booking backend.
+
+**T2.8 Testing Result: PASS**
+
+
 ## 6. Testing Summary
 
-| User Story / Area | Tests Passed |
-|---|---:|
-| US-05 — Doctor Search | 3 |
-| US-06 — Doctor Information and Availability | 3 |
-| US-07 — Booking and database persistence | 3 |
-| US-15 — Availability update and deletion protection | 2 |
-| US-07 / US-15 — Final database integrity | 1 |
-| **Total** | **12** |
+The Sprint 2 Day 4 regression testing was performed by
+Sewara Rashidi and Sonbol Almas using their respective
+local development environments.
 
-**Total Tests Executed:** 12  
-**Passed:** 12  
-**Failed:** 0  
-**Overall Day 4 Regression Test Result:** PASS
+| Developer | Tests Executed | Passed | Failed |
+|---|---:|---:|---:|
+| Sewara Rashidi | 12 | 12 | 0 |
+| Sonbol Almas | 6 | 6 | 0 |
+| **Total** | **18** | **18** | **0** |
 
-These results are based on manual testing and the observed application and database behavior.
+**Total Tests Executed:** 18
+
+**Passed:** 18
+
+**Failed:** 0
+
+**Overall Day 4 Regression Testing Result:** PASS
+
+The results confirm that the implemented functionality
+worked correctly in the 18 recorded manual test scenarios.
+
+
 
 ## 7. Remaining Work and Limitations
 
-The recorded tests confirm that the implemented functionality operated correctly in the scenarios tested. They do not establish that all possible inputs, browser configurations, or concurrent booking scenarios have been verified.
+### 7.1 Completed Sprint 2 Task
 
-At the time of this report:
+T2.8 — Appointment Date Selection and Filtering
+was implemented and tested by Sonbol Almas.
 
-- **T2.8:** A separate appointment-date selection and filtering feature remained to be completed.
-- Additional integration testing would be needed after T2.8 was implemented.
-- Comprehensive appointment conflict handling and cancellation workflows remained outside the completed Day 4 testing scope.
-- Automated regression testing had not been performed as part of these recorded checks.
+Patients can now select an appointment date, view
+available time slots for that date, clear the date
+filter, and book an available appointment.
 
-These remaining activities should be tracked through the Sprint Backlog and relevant user stories.
+All six recorded T2.8 manual tests passed.
+
+### 7.2 Remaining Testing Limitations
+
+Although all 18 recorded Day 4 tests passed,
+the following areas were not fully verified:
+
+- Automated regression testing.
+- Simultaneous appointment-booking requests
+  from multiple patients.
+- Overlapping doctor availability periods.
+- Appointment cancellation and rebooking.
+- Testing across multiple browsers and devices.
+
+These limitations should be considered when
+planning future development and testing activities.
+
+### 7.3 Sprint Backlog Status
+
+The implementation and testing tasks covered by
+the Day 4 report have been completed.
+
+Final acceptance of the Sprint 2 user stories
+remains subject to the team's Definition of Done
+and Sprint Review.
+
 
 ## 8. Conclusion
 
-Sprint 2 Day 4 regression testing demonstrated that the implemented doctor search, doctor information, availability display, appointment booking, and booked-availability protection functions continued to operate correctly after integration.
 
-All 12 recorded manual test checks passed.
+## 8. Conclusion
 
-The results provide testing evidence for the current Sprint 2 increment and support the ongoing verification of the team's Sprint Goal.
+Sprint 2 Day 4 regression testing verified the
+integrated functionality of the Clinic Appointment System
+across four user stories:
 
-**Testing Status:** PASS for all documented Day 4 scenarios.
+- US-05 — Doctor Search
+- US-06 — Doctor Information and Availability
+- US-07 — Appointment Dates, Time Slots, and Booking
+- US-15 — Doctor Availability Management
 
-**Prepared by:** Sewara Rashidi  
-**Related Sprint:** Sprint 2  
+Sewara Rashidi completed 12 regression tests covering
+doctor search, doctor information, appointment booking,
+database persistence, and availability protection.
+
+Sonbol Almas completed 6 additional tests covering
+appointment date selection, date filtering, booking
+after filtering, and database verification.
+
+All 18 recorded manual tests passed successfully.
+
+The results demonstrate that the implemented features
+functioned correctly in the scenarios tested.
+
+T2.8 — Appointment Date Selection and Filtering
+has been implemented and tested.
+
+Further testing may be required for concurrency,
+overlapping availability, cancellation, and other
+scenarios outside the current testing scope.
+
+**Overall Day 4 Testing Status:** PASS
+
+**Total Tests:** 18
+**Passed:** 18
+**Failed:** 0
+
+**Prepared by:** Sewara Rashidi and Sonbol Almas
+**Related Sprint:** Sprint 2
 **Report Date:** October 20, 2026
