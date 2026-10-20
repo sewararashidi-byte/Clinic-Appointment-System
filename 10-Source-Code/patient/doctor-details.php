@@ -34,7 +34,14 @@ $doctorId = filter_var(
     FILTER_VALIDATE_INT,
     ['options' => ['min_range' => 1]]
 );
+$selectedDate = $_GET['appointment_date'] ?? '';
 
+if (
+    !is_string($selectedDate) ||
+    !preg_match('/^\d{4}-\d{2}-\d{2}$/', $selectedDate)
+) {
+    $selectedDate = '';
+}
 $doctor = null;
 $availability = [];
 $appointmentSlots = [];
@@ -52,6 +59,7 @@ if (is_int($doctorId)) {
             $doctorId
         );
 
+        
         // Generate available appointment slots.
         // Already-booked slots are excluded.
         $appointmentSlots = getAvailableAppointmentSlots(
@@ -59,6 +67,18 @@ if (is_int($doctorId)) {
             $doctorId,
             $availability
         );
+        if ($selectedDate !== '') {
+
+    $appointmentSlots = array_values(
+        array_filter(
+            $appointmentSlots,
+            function (array $slot) use ($selectedDate): bool {
+                return $slot['appointment_date'] === $selectedDate;
+            }
+        )
+    );
+
+}
     }
 }
 
@@ -378,20 +398,86 @@ $conn->close();
 
                 </p>
 
+                <!-- Appointment Date Selection -->
+
+<form method="GET" action="doctor-details.php" class="mb-4">
+
+    <input
+        type="hidden"
+        name="doctor_id"
+        value="<?php echo (int) $doctorId; ?>"
+    >
+
+    <label for="appointment_date" class="form-label">
+        <strong>Select Appointment Date</strong>
+    </label>
+
+    <div class="row g-2">
+
+        <div class="col-md-5">
+
+            <input
+                type="date"
+                id="appointment_date"
+                name="appointment_date"
+                class="form-control"
+                min="<?php echo date('Y-m-d'); ?>"
+                value="<?php echo escapeHtml($selectedDate); ?>"
+            >
+
+        </div>
+
+        <div class="col-md-auto">
+
+            <button type="submit" class="btn btn-primary">
+                Show Available Slots
+            </button>
+
+        </div>
+
+        <div class="col-md-auto">
+
+            <a
+                href="doctor-details.php?doctor_id=<?php echo (int) $doctorId; ?>"
+                class="btn btn-outline-secondary"
+            >
+                Show All Dates
+            </a>
+
+        </div>
+
+    </div>
+
+</form>
                 <!-- No Available Slots -->
 
                 <?php if (empty($appointmentSlots)): ?>
 
-                    <div class="alert alert-info mb-0">
+    <div class="alert alert-info mb-0">
 
-                        No appointment slots are currently
-                        available for this doctor.
+        <?php if ($selectedDate !== ''): ?>
 
-                        Please check again later.
+            No appointment slots are available
+            for the selected date:
 
-                    </div>
+            <strong>
+                <?php echo escapeHtml($selectedDate); ?>
+            </strong>
 
-                <?php else: ?>
+            Please select another date.
+
+        <?php else: ?>
+
+            No appointment slots are currently
+            available for this doctor.
+
+            Please check again later.
+
+        <?php endif; ?>
+
+    </div>
+
+<?php else: ?>
 
                     <!-- Available Appointment Slots -->
 
