@@ -59,6 +59,40 @@ The system shall allow an authenticated patient to select an available appointme
 11. The transaction is committed.
 12. The patient is redirected to the Doctor Details page with a booking success message.
 
+
+### 4.1 Appointment Date Selection and Filtering (T2.8)
+
+During Sprint 2 Day 4, the appointment-booking
+interface was extended to support date selection.
+
+The updated sequence includes:
+
+1. The patient opens the Doctor Details page.
+2. The patient selects an appointment date.
+3. The patient clicks "Show Available Slots".
+4. The system retrieves the doctor's current
+   availability and booked appointment information.
+5. The system filters available slots to display
+   only those matching the selected date.
+6. If matching slots exist, the patient can
+   select an available time and book it.
+7. If no slots are available, the system
+   displays a date-specific message.
+8. The patient can click "Show All Dates"
+   to remove the filter.
+
+**Related Task:** T2.8 — Appointment Date Selection
+and Filtering
+
+**Implemented by:** Sonbol Almas
+
+**Testing:** Six manual tests were completed
+successfully as part of Sprint 2 Day 4 testing.
+
+**Database Changes:** None. The feature uses
+the existing doctor availability and
+appointments tables.
+
 ## 5. Alternative and Exception Flows
 
 | Condition | Expected System Behavior |
