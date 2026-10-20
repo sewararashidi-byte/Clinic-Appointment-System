@@ -28,34 +28,77 @@ sequenceDiagram
 
         Page-->>Patient: Display doctor and available slots
 
-        Patient->>Page: Click Book Appointment
-        Page->>Booking: POST selected slot and CSRF token
+        %% T2.8 - Appointment Date Selection
 
-        Booking->>Booking: Check patient role and validate request
+        opt Patient selects an appointment date
+            Patient->>Page: Select date and click Show Available Slots
+            Page->>DoctorRepo: Retrieve current availability
+            DoctorRepo->>DB: Query doctor availability
+            DB-->>DoctorRepo: Availability records
+            DoctorRepo-->>Page: Current availability
 
-        alt Invalid request or security token
-            Booking-->>Patient: Redirect with booking error
-        else Valid booking request
-            Booking->>DB: Begin transaction and lock doctor
-            DB-->>Booking: Doctor record
-
-            Booking->>DoctorRepo: Recheck doctor availability
-            DoctorRepo->>DB: Retrieve availability records
-            DB-->>DoctorRepo: Current availability
-            DoctorRepo-->>Booking: Availability periods
-
-            Booking->>SlotRepo: Recheck available slots
+            Page->>SlotRepo: Get available appointment slots
             SlotRepo->>DB: Retrieve confirmed appointments
-            DB-->>SlotRepo: Current booked times
-            SlotRepo-->>Booking: Remaining available slots
+            DB-->>SlotRepo: Booked appointment times
+            SlotRepo-->>Page: Available appointment slots
 
-            alt Selected slot is available
-                Booking->>DB: Insert confirmed appointment
-                Booking->>DB: Commit transaction
-                Booking-->>Patient: Redirect with success message
-            else Slot unavailable
-                Booking->>DB: Roll back transaction
+            Page->>Page: Filter slots by selected date
+
+            alt Slots found for selected date
+                Page-->>Patient: Display slots for selected date
+            else No slots for selected date
+                Page-->>Patient: Display date-specific no-slots message
+            end
+        end
+
+        %% Clear Appointment Date Filter
+
+        opt Patient clicks Show All Dates
+            Patient->>Page: Click Show All Dates
+            Page->>Page: Reload page without date filter
+            Page->>DoctorRepo: Retrieve current availability
+            DoctorRepo-->>Page: Availability periods
+            Page->>SlotRepo: Get available appointment slots
+            SlotRepo->>DB: Retrieve confirmed appointments
+            DB-->>SlotRepo: Booked appointment times
+            SlotRepo-->>Page: All available appointment slots
+            Page-->>Patient: Display slots for all available dates
+        end
+
+        %% Patient Appointment Booking
+
+        opt Patient selects an available slot
+            Patient->>Page: Click Book Appointment
+            Page->>Booking: POST selected slot and CSRF token
+
+            Booking->>Booking: Check patient role and validate request
+
+            alt Invalid request or security token
                 Booking-->>Patient: Redirect with booking error
+
+            else Valid booking request
+                Booking->>DB: Begin transaction and lock doctor
+                DB-->>Booking: Doctor record
+
+                Booking->>DoctorRepo: Recheck doctor availability
+                DoctorRepo->>DB: Retrieve availability records
+                DB-->>DoctorRepo: Current availability
+                DoctorRepo-->>Booking: Availability periods
+
+                Booking->>SlotRepo: Recheck available slots
+                SlotRepo->>DB: Retrieve confirmed appointments
+                DB-->>SlotRepo: Current booked times
+                SlotRepo-->>Booking: Remaining available slots
+
+                alt Selected slot is available
+                    Booking->>DB: Insert confirmed appointment
+                    Booking->>DB: Commit transaction
+                    Booking-->>Patient: Redirect with success message
+
+                else Slot unavailable
+                    Booking->>DB: Roll back transaction
+                    Booking-->>Patient: Redirect with booking error
+                end
             end
         end
 
