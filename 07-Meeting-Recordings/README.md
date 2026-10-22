@@ -22,13 +22,37 @@ https://drive.google.com/file/d/14J7YzQhbj7VYl5F-BpHL9ch9tuKvLk2x/view?usp=shari
 https://drive.google.com/file/d/1nCUhiRfzwx3o-WoSKTp8TdKK3eZnwYT6/view?usp=sharing
 
 5. Daily Scrum Meeting No.4   
-https://drive.google.com/file/d/1wk54dxSK7evzDNXCLISaL-wFguoG0s3H/view?usp=sharing
+https://drive.google.com/file/d/1wk54dxSK7evzDNXCLISaL-wFguoG0s3H/view?usp=sharing  
 
-6. Daily Scrum Meeting No.5   
+7. Daily Scrum Meeting No.5   
 https://drive.google.com/file/d/1yjLPxaLcUqDc0qwAEyompeVlDzm8fm-r/view?usp=sharing
 
-7. Sprint Review   
+8. Sprint Review   
 https://drive.google.com/file/d/1d_pkOHp3o3uhPq5jOZ3QBFXSN7dvHBfF/view?usp=sharing
 
-8. Sprint Retrospective   
-https://drive.google.com/file/d/19satNv0xn5MWofQopi6pbpcz-7T78Htz/view?usp=sharing
+9. Sprint Retrospective   
+https://drive.google.com/file/d/19satNv0xn5MWofQopi6pbpcz-7T78Htz/view?usp=sharing   
+
+
+## Sprint 2    
+
+1. Second Sprint Planning    
+https://drive.google.com/drive/folders/1HCTu8gPT7JHtTMZflaSz3N24cZmcxpgq?usp=sharing
+
+2. Daily Scrum Meeting No.1   
+https://drive.google.com/file/d/1u8K3R4beGy0nDNYdo2MgDXiUU1KphogB/view?usp=sharing
+
+3. Daily Scrum Meeting No.2   
+https://drive.google.com/file/d/1TR5edqurWDxGCiYSeFU3pl_rfes0SXwb/view?usp=sharing
+
+4. Daily Scrum Meeting No.3   
+https://drive.google.com/file/d/1ivF-tvdFmFC98L_ufSJ8-nHzCXb__vOA/view?usp=sharing
+
+5. Daily Scrum Meeting No.4   
+https://drive.google.com/file/d/1m5H7RRJobcRq5cP_ckEdwEWLkpYFIUI7/view?usp=sharing
+
+8. Sprint Review   
+https://drive.google.com/file/d/1ixggyxRSVkHtgU7HhuaPaHgo9UBe5Ji5/view?usp=sharing
+
+9. Sprint Retrospective   
+https://drive.google.com/file/d/1iNUE3zCi1ZsHIpJ5kqMMQn3vwDWPGjNR/view?usp=sharing
