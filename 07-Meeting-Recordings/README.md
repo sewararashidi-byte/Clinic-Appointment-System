@@ -37,7 +37,7 @@ https://drive.google.com/file/d/19satNv0xn5MWofQopi6pbpcz-7T78Htz/view?usp=shari
 ## Sprint 2    
 
 1. Second Sprint Planning    
-https://drive.google.com/drive/folders/1HCTu8gPT7JHtTMZflaSz3N24cZmcxpgq?usp=sharing
+https://drive.google.com/file/d/1DueEcDkjNwqQ2e84n-45JOQQrKiBzrMG/view?usp=sharing
 
 2. Daily Scrum Meeting No.1   
 https://drive.google.com/file/d/1u8K3R4beGy0nDNYdo2MgDXiUU1KphogB/view?usp=sharing
