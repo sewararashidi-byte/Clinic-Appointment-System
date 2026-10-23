@@ -149,3 +149,52 @@ function getAvailableAppointmentSlots(
 
     return $availableSlots;
 }
+
+
+/**
+ * US-11: Retrieve appointment confirmation details.
+ *
+ * A patient can only retrieve their own appointment.
+ */
+function getPatientAppointmentConfirmation(
+    mysqli $conn,
+    int $appointmentId,
+    int $patientId
+): ?array {
+
+    if ($appointmentId <= 0 || $patientId <= 0) {
+        return null;
+    }
+
+    $sql = "
+        SELECT
+            a.id AS appointment_id,
+            a.appointment_date,
+            a.start_time,
+            a.end_time,
+            a.status,
+            u.full_name AS doctor_name
+        FROM appointments a
+        INNER JOIN users u
+            ON u.id = a.doctor_id
+        WHERE a.id = ?
+          AND a.patient_id = ?
+        LIMIT 1
+    ";
+
+    $stmt = $conn->prepare($sql);
+
+    $stmt->bind_param(
+        'ii',
+        $appointmentId,
+        $patientId
+    );
+
+    $stmt->execute();
+
+    $appointment = $stmt->get_result()->fetch_assoc();
+
+    $stmt->close();
+
+    return $appointment ?: null;
+}
