@@ -188,16 +188,27 @@ try {
         $endTime
     );
 
-    $insertStmt->execute();
-    $insertStmt->close();
+    
+$insertStmt->execute();
 
-    $conn->commit();
+// Get the ID of the newly booked appointment.
+$appointmentId = (int) $conn->insert_id;
 
-    bookingResponse(
-        $doctorId,
-        'booking_success',
-        'Appointment booked successfully.'
-    );
+$insertStmt->close();
+
+// Save the appointment permanently.
+$conn->commit();
+
+// Remember the latest successful booking for confirmation.
+$_SESSION['latest_booking_appointment_id'] = $appointmentId;
+
+// Keep the existing success message working.
+bookingResponse(
+    $doctorId,
+    'booking_success',
+    'Appointment booked successfully.'
+);
+
 
 } catch (DomainException $e) {
 
