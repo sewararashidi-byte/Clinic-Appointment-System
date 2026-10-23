@@ -1,63 +1,166 @@
+
 # US-08 — Prevent Double-Booking: Test Results
 
 **Project:** Clinic Appointment System  
 **Sprint:** Sprint 3  
-**Date:** October 22, 2026  
+**Testing Dates:** October 22–23, 2026  
 **Tester:** Sewara Rashidi  
 **User Story:** US-08 — Prevent Double-Booking  
-**Environment:** PHP, MySQL, XAMPP, web browser
+**Environment:** PHP, MySQL, XAMPP, web browser, PHP CLI
 
-## Test Scenario
+---
+
+## 1. Testing Objective
+
+Verify that the Clinic Appointment System prevents two patients from booking the same appointment slot and excludes appointment slots that overlap existing confirmed bookings.
+
+## 2. Test Scenario
 
 Two different authenticated patients attempted to book the same appointment slot.
 
-**Test appointment:**
+**Test Appointment:**
+
 - Doctor ID: 3
 - Date: October 23, 2026
 - Time: 10:00–10:30 AM
-- Confirmed appointment ID: 5
+- Confirmed Appointment ID: 5
+- Appointment Status: confirmed
 
-## Results
+The first patient successfully booked the appointment. The second patient attempted to book the same slot using a previously loaded Doctor Details page.
+
+The system rejected the second booking attempt.
+
+## 3. Test Cases and Results
 
 | Test ID | Test Case | Actual Result | Status |
 |---|---|---|---|
-| US08-T01 | Patient 1 books an available slot | Booking succeeded | PASS |
-| US08-T02 | Patient 2 attempts the same slot from an unchanged page | System rejected the booking and reported that the slot was already booked | PASS |
-| US08-T03 | Verify duplicate booking prevention in MySQL | Only one appointment was stored for the tested doctor, date, and start time | PASS |
-| US08-T04 | Refresh Patient 2's Doctor Details page | The booked 10:00–10:30 AM slot was excluded; the available 10:30–11:00 AM slot remained visible | PASS |
+| US08-T01 | Patient 1 books an available appointment slot | Booking succeeded and a confirmed appointment was created | PASS |
+| US08-T02 | Patient 2 attempts to book the same slot from an unchanged page | The system rejected the booking and displayed an already-booked message | PASS |
+| US08-T03 | Verify duplicate-booking prevention in MySQL | Only one appointment was stored for the tested doctor, date, and starting time | PASS |
+| US08-T04 | Refresh Patient 2's Doctor Details page | The booked 10:00–10:30 AM slot disappeared; the available 10:30–11:00 AM slot remained visible | PASS |
+| US08-T05 | Check whether a hypothetical overlapping appointment slot is excluded | One candidate slot was generated, but zero available slots were returned | PASS |
 
-## Summary
+## 4. Test Summary
 
-**Tests executed:** 4  
-**Passed:** 4  
-**Failed:** 0
+**Total Tests Executed:** 5  
+**Tests Passed:** 5  
+**Tests Failed:** 0
 
-The tested scenario confirms that an existing confirmed appointment cannot be booked again through the application. The database unique index on doctor ID, appointment date, and start time was also verified.
+The results demonstrate that the application rejected a duplicate booking and correctly excluded an overlapping appointment slot in the tested scenarios.
 
-## Remaining Verification
+The existing MySQL unique index, `uq_doctor_appointment_slot`, was also verified.
 
-- Test overlapping appointments with different start times.
-- Test near-simultaneous booking requests where feasible.
+This index protects the combination of:
 
-**Current conclusion:** The tested double-booking behavior works correctly. Full US-08 verification remains in progress.
+- `doctor_id`
+- `appointment_date`
+- `start_time`
 
+The database unique constraint prevents duplicate appointment records with the same doctor, date, and starting time.
 
+However, prevention of overlapping appointments with different starting times also depends on the application's booking validation.
 
-## Additional Database Inspection
+## 5. Additional Database Inspection
 
-**Date:** October 22, 2026
+**Date:** October 22, 2026  
+**Tester:** Sewara Rashidi
 
-A read-only SQL query was executed to identify
-overlapping doctor availability periods.
+### Objective
 
-**Actual result:** MySQL returned zero rows.
+Determine whether overlapping doctor availability periods currently exist in the local database.
 
-**Finding:** No overlapping availability periods
-currently exist in the local test database.
+### Testing Method
 
-This inspection does not prove that the system
-prevents new overlapping availability records.
+A read-only SQL query compared availability records belonging to the same doctor on the same date.
 
-**Follow-up:** Clarify overlapping availability
-rules with the Product Owner. Simultaneous booking
-and overlapping-time edge cases remain untested.
+### Actual Result
+
+MySQL returned zero rows.
+
+### Finding
+
+No overlapping doctor availability periods were found in the local test database at the time of inspection.
+
+This result does not prove that the system prevents doctors from creating overlapping availability periods.
+
+### Follow-up
+
+The Product Owner should clarify whether doctors are allowed to create overlapping availability periods.
+
+The appointment overlap-filtering test was subsequently performed and passed on October 23, 2026.
+
+Truly simultaneous booking requests and end-to-end booking with overlapping availability periods remain untested.
+
+## 6. Overlapping Appointment Test
+
+**Date:** October 23, 2026  
+**Tester:** Sewara Rashidi  
+**Test ID:** US08-T05
+
+### Objective
+
+Verify that the appointment repository excludes a candidate appointment that overlaps existing confirmed bookings.
+
+### Test Data
+
+- Doctor ID: 3
+- Appointment Date: October 26, 2026
+- Hypothetical Appointment Start Time: 2:15 PM
+- Hypothetical Appointment End Time: 2:45 PM
+- Appointment Duration: 30 minutes
+
+### Test Procedure
+
+1. A temporary PHP CLI test file was created.
+2. A hypothetical availability record was defined in PHP without inserting it into MySQL.
+3. The `generateAppointmentSlots()` function generated a candidate appointment slot.
+4. The `getAvailableAppointmentSlots()` function checked the candidate against existing confirmed appointments.
+5. The returned available slots were counted.
+
+### Expected Result
+
+The hypothetical appointment must not be displayed as available because its time overlaps existing confirmed appointments.
+
+### Actual Terminal Output
+
+```text
+Candidate slots: 1
+Available slots: 0
+PASS: Overlapping slot correctly excluded.
+```
+
+### Test Result
+
+**PASS**
+
+The PHP appointment repository correctly excluded the hypothetical overlapping slot.
+
+This was a read-only backend test. No appointment or availability records were created, modified, or deleted.
+
+The temporary test file `us08_overlap_temp_check.php` was deleted after testing.
+
+## 7. Remaining Verification
+
+The following scenarios remain untested:
+
+1. Truly simultaneous booking requests from two separate authenticated patient sessions.
+2. End-to-end booking behavior when overlapping doctor availability periods exist.
+3. Product Owner confirmation of whether overlapping doctor availability periods should be prohibited.
+
+These items should remain open until verified or addressed through an agreed follow-up.
+
+## 8. Conclusion
+
+Five US-08 tests were executed during October 22–23, 2026.
+
+**All five tests passed.**
+
+The results confirm that the system prevents duplicate booking of the same appointment slot through the tested workflow and correctly excludes overlapping appointment times in the tested PHP repository scenario.
+
+The existing PHP booking validation and MySQL unique constraint provide important protections against double-booking.
+
+No change to the appointment-booking implementation was required based on the completed tests.
+
+However, concurrent booking and end-to-end overlapping-availability scenarios have not yet been fully verified.
+
+**Current Status:** Five tests passed; additional verification remains pending. Full US-08 completion has not yet been confirmed.
