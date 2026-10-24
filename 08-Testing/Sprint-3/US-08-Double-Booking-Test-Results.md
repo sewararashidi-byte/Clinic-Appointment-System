@@ -1,127 +1,100 @@
-
-# US-08 — Prevent Double-Booking: Test Results
+# US-08 — Prevent Double-Booking: Complete Test Results
 
 **Project:** Clinic Appointment System  
 **Sprint:** Sprint 3  
-**Testing Dates:** October 22–23, 2026  
+**Testing Dates:** October 22–24, 2026  
 **Tester:** Sewara Rashidi  
 **User Story:** US-08 — Prevent Double-Booking  
-**Environment:** PHP, MySQL, XAMPP, web browser, PHP CLI
+**Environment:** PHP, MySQL, XAMPP, phpMyAdmin, web browser, PHP CLI
 
 ---
 
 ## 1. Testing Objective
 
-Verify that the Clinic Appointment System prevents two patients from booking the same appointment slot and excludes appointment slots that overlap existing confirmed bookings.
+The objective of US-08 testing was to verify that the Clinic Appointment System prevents scheduling conflicts during appointment booking and doctor availability management.
 
-## 2. Test Scenario
+Testing focused on three main areas:
 
-Two different authenticated patients attempted to book the same appointment slot.
+1. Preventing different patients from booking the same appointment slot.
+2. Preventing doctors from creating overlapping availability periods.
+3. Preventing doctors from updating availability periods in ways that create overlaps.
 
-**Test Appointment:**
+The tests also verified database integrity, valid scheduling operations, patient appointment visibility, and system behavior after merging changes into the main GitHub branch.
 
-- Doctor ID: 3
-- Date: October 23, 2026
-- Time: 10:00–10:30 AM
-- Confirmed Appointment ID: 5
-- Appointment Status: confirmed
+## 2. Product Owner Clarification
 
-The first patient successfully booked the appointment. The second patient attempted to book the same slot using a previously loaded Doctor Details page.
+During Sprint 3, the Product Owner, Husna Zala Khan, clarified that:
 
-The system rejected the second booking attempt.
+- Doctors must not create overlapping availability periods on the same date.
+- The system must prevent overlapping confirmed appointments.
+- Scheduling conflicts should be prevented.
 
-## 3. Test Cases and Results
+These requirements guided the availability creation and update improvements implemented during Sprint 3.
+
+## 3. Test Environment
+
+| Component | Technology |
+|---|---|
+| Backend | PHP |
+| Database | MySQL |
+| Local server | XAMPP |
+| Database inspection | phpMyAdmin |
+| User interface testing | Web browser |
+| Backend function testing | PHP CLI |
+| Version control | Git and GitHub |
+
+Testing was performed using the local Clinic Appointment System development environment.
+
+---
+
+## 4. Appointment Double-Booking Tests
+
+**Testing Dates:** October 22–23, 2026  
+**Tester:** Sewara Rashidi  
+**Test IDs:** US08-T01 to US08-T05
+
+### 4.1 Objective
+
+Verify that two patients cannot successfully book the same appointment slot and that candidate slots overlapping confirmed appointments are excluded.
+
+### 4.2 Test Data
+
+| Field | Value |
+|---|---|
+| Doctor ID | 3 |
+| Appointment Date | October 23, 2026 |
+| Appointment Time | 10:00–10:30 AM |
+| Confirmed Appointment ID | 5 |
+| Appointment Status | confirmed |
+
+### 4.3 Test Cases and Results
 
 | Test ID | Test Case | Actual Result | Status |
 |---|---|---|---|
 | US08-T01 | Patient 1 books an available appointment slot | Booking succeeded and a confirmed appointment was created | PASS |
-| US08-T02 | Patient 2 attempts to book the same slot from an unchanged page | The system rejected the booking and displayed an already-booked message | PASS |
-| US08-T03 | Verify duplicate-booking prevention in MySQL | Only one appointment was stored for the tested doctor, date, and starting time | PASS |
-| US08-T04 | Refresh Patient 2's Doctor Details page | The booked 10:00–10:30 AM slot disappeared; the available 10:30–11:00 AM slot remained visible | PASS |
-| US08-T05 | Check whether a hypothetical overlapping appointment slot is excluded | One candidate slot was generated, but zero available slots were returned | PASS |
+| US08-T02 | Patient 2 attempts to book the same slot using a previously loaded page | The system rejected the request and displayed an already-booked message | PASS |
+| US08-T03 | Inspect appointment records in MySQL | Only one appointment existed for the tested doctor, date, and start time | PASS |
+| US08-T04 | Refresh Patient 2's Doctor Details page | The booked 10:00–10:30 AM slot disappeared, while 10:30–11:00 AM remained available | PASS |
+| US08-T05 | Test a hypothetical appointment slot overlapping confirmed bookings | One candidate slot was generated, but zero available slots were returned | PASS |
 
-## 4. Test Summary
+### 4.4 Overlapping Appointment Slot Test
 
-**Total Tests Executed:** 5  
-**Tests Passed:** 5  
-**Tests Failed:** 0
+**Test ID:** US08-T05  
+**Date:** October 23, 2026
 
-The results demonstrate that the application rejected a duplicate booking and correctly excluded an overlapping appointment slot in the tested scenarios.
-
-The existing MySQL unique index, `uq_doctor_appointment_slot`, was also verified.
-
-This index protects the combination of:
-
-- `doctor_id`
-- `appointment_date`
-- `start_time`
-
-The database unique constraint prevents duplicate appointment records with the same doctor, date, and starting time.
-
-However, prevention of overlapping appointments with different starting times also depends on the application's booking validation.
-
-## 5. Additional Database Inspection
-
-**Date:** October 22, 2026  
-**Tester:** Sewara Rashidi
-
-### Objective
-
-Determine whether overlapping doctor availability periods currently exist in the local database.
-
-### Testing Method
-
-A read-only SQL query compared availability records belonging to the same doctor on the same date.
-
-### Actual Result
-
-MySQL returned zero rows.
-
-### Finding
-
-No overlapping doctor availability periods were found in the local test database at the time of inspection.
-
-This result does not prove that the system prevents doctors from creating overlapping availability periods.
-
-### Follow-up
-
-The Product Owner should clarify whether doctors are allowed to create overlapping availability periods.
-
-The appointment overlap-filtering test was subsequently performed and passed on October 23, 2026.
-
-Truly simultaneous booking requests and end-to-end booking with overlapping availability periods remain untested.
-
-## 6. Overlapping Appointment Test
-
-**Date:** October 23, 2026  
-**Tester:** Sewara Rashidi  
-**Test ID:** US08-T05
-
-### Objective
-
-Verify that the appointment repository excludes a candidate appointment that overlaps existing confirmed bookings.
-
-### Test Data
+A temporary PHP CLI test was performed using:
 
 - Doctor ID: 3
-- Appointment Date: October 26, 2026
-- Hypothetical Appointment Start Time: 2:15 PM
-- Hypothetical Appointment End Time: 2:45 PM
-- Appointment Duration: 30 minutes
+- Appointment date: October 26, 2026
+- Candidate start time: 2:15 PM
+- Candidate end time: 2:45 PM
+- Appointment duration: 30 minutes
 
-### Test Procedure
+The test used a hypothetical availability record created in PHP memory without inserting it into MySQL.
 
-1. A temporary PHP CLI test file was created.
-2. A hypothetical availability record was defined in PHP without inserting it into MySQL.
-3. The `generateAppointmentSlots()` function generated a candidate appointment slot.
-4. The `getAvailableAppointmentSlots()` function checked the candidate against existing confirmed appointments.
-5. The returned available slots were counted.
+The `generateAppointmentSlots()` function generated a candidate appointment slot. The `getAvailableAppointmentSlots()` function then checked the candidate against confirmed appointments.
 
-### Expected Result
-
-The hypothetical appointment must not be displayed as available because its time overlaps existing confirmed appointments.
-
-### Actual Terminal Output
+**Actual terminal output:**
 
 ```text
 Candidate slots: 1
@@ -129,172 +102,326 @@ Available slots: 0
 PASS: Overlapping slot correctly excluded.
 ```
 
-### Test Result
+**Result: PASS**
 
-**PASS**
+No appointment or availability records were modified. The temporary file `us08_overlap_temp_check.php` was deleted after testing.
 
-The PHP appointment repository correctly excluded the hypothetical overlapping slot.
+### 4.5 Database Constraint Verification
 
-This was a read-only backend test. No appointment or availability records were created, modified, or deleted.
+The existing unique index `uq_doctor_appointment_slot` was verified.
 
-The temporary test file `us08_overlap_temp_check.php` was deleted after testing.
+It applies to:
 
-## 7. Remaining Verification
+- `doctor_id`
+- `appointment_date`
+- `start_time`
 
-The following scenarios remain untested:
+The unique index prevents multiple appointment records from using the same combination of doctor, date, and starting time.
 
-1. Truly simultaneous booking requests from two separate authenticated patient sessions.
-2. End-to-end booking behavior when overlapping doctor availability periods exist.
-3. Product Owner confirmation of whether overlapping doctor availability periods should be prohibited.
+Overlapping appointments with different starting times are also checked by application-level booking validation.
 
-These items should remain open until verified or addressed through an agreed follow-up.
+### 4.6 Initial Availability Inspection
 
-## 8. Conclusion
+**Date:** October 22, 2026
 
-Five US-08 tests were executed during October 22–23, 2026.
+A read-only SQL query checked whether overlapping availability periods already existed in the local database.
 
-**All five tests passed.**
+**Actual Result:** Zero overlapping records were found.
 
-The results confirm that the system prevents duplicate booking of the same appointment slot through the tested workflow and correctly excludes overlapping appointment times in the tested PHP repository scenario.
+This inspection established the initial database condition but did not prove that the application prevented doctors from creating overlaps.
 
-The existing PHP booking validation and MySQL unique constraint provide important protections against double-booking.
+That prevention was implemented and tested later in Sprint 3.
 
-No change to the appointment-booking implementation was required based on the completed tests.
+### 4.7 Appointment Booking Test Summary
 
-However, concurrent booking and end-to-end overlapping-availability scenarios have not yet been fully verified.
-
-**Current Status:** Five tests passed; additional verification remains pending. Full US-08 completion has not yet been confirmed.
-
+**Tests Executed:** 5  
+**Passed:** 5  
+**Failed:** 0
 
 ---
 
-## Additional US-08 Testing — Doctor Availability Overlap Protection
+## 5. Doctor Availability Creation Tests
 
-**Date:** October 24, 2026
-**Tester:** Sewara Rashidi
-**Branch:** feature/s3-availability-overlap-protection
+**Date:** October 24, 2026  
+**Tester:** Sewara Rashidi  
+**Feature Branch:** `feature/s3-availability-overlap-protection`  
+**Test IDs:** US08-AV01 to US08-AV06
 
-### Objective
+### 5.1 Objective
 
-Verify that doctors cannot create overlapping availability
-periods on the same date, as confirmed by the Product Owner.
+Verify that the system rejects overlapping or duplicate availability while allowing valid adjacent periods and availability on different dates.
 
-### Test Cases and Results
+### 5.2 Implementation
+
+**Updated file:**
+
+`10-Source-Code/actions/availability_create.php`
+
+The implementation:
+
+- Checks whether new availability overlaps an existing period belonging to the same doctor on the same date.
+- Begins a MySQL transaction.
+- Locks the doctor's database row using `SELECT ... FOR UPDATE`.
+- Commits successful inserts.
+- Rolls back rejected overlaps or unsuccessful inserts.
+- Displays an error when overlapping availability is detected.
+
+### 5.3 Test Cases and Results
 
 | Test ID | Test Case | Actual Result | Status |
 |---|---|---|---|
-| US08-AV01 | Create partially overlapping availability (14:30–15:30) when 14:00–15:00 exists | Request rejected; MySQL retained only the original period | PASS |
-| US08-AV02 | Create an exact duplicate (14:00–15:00) | System rejected the duplicate | PASS |
-| US08-AV03 | Create adjacent availability (15:00–16:00) | Request accepted; MySQL confirmed both adjacent periods | PASS |
-| US08-AV04 | Create availability on a different date (October 27, 14:00–15:00) | Request accepted and record verified in MySQL | PASS |
-| US08-AV05 | Submit competing overlapping periods using two browser sessions | First request accepted; second rejected; MySQL contained only one record | PASS |
-| US08-AV06 | Check database storage engines | Both users and doctor_availability tables use InnoDB | PASS |
+| US08-AV01 | Create 14:30–15:30 availability when 14:00–15:00 already exists | Request rejected; database retained the original availability | PASS |
+| US08-AV02 | Create an exact duplicate of the 14:00–15:00 period | Duplicate rejected | PASS |
+| US08-AV03 | Create adjacent availability from 15:00–16:00 | Request accepted; both periods were verified in MySQL | PASS |
+| US08-AV04 | Create 14:00–15:00 availability on October 27 instead of October 26 | Request accepted and record verified in MySQL | PASS |
+| US08-AV05 | Submit overlapping availability through two separate authenticated browser sessions | First request accepted; second rejected; database contained only one record | PASS |
+| US08-AV06 | Verify the database storage engines | `users` and `doctor_availability` were both confirmed to use InnoDB | PASS |
 
-### Database Evidence
+### 5.4 Database Evidence
 
-Doctor ID 3, October 26, 2026:
-- Availability ID 4: 14:00–15:00
-- Availability ID 6: 15:00–16:00
+The following records were verified during availability creation testing.
 
-Doctor ID 3, October 27, 2026:
-- Availability ID 7: 14:00–15:00
+**Doctor ID 3 — October 26, 2026**
 
-Doctor ID 3, October 29, 2026:
-- Availability ID 8: 10:00–11:00
+| Availability ID | Time |
+|---|---|
+| 4 | 14:00–15:00 |
+| 6 | 15:00–16:00 |
 
-Only one record existed for October 29 after the
-competing overlapping requests.
+The periods were adjacent and did not overlap.
 
-### Technical Implementation
+**Doctor ID 3 — October 27, 2026**
 
-Updated availability_create.php to:
-- Check existing availability for time overlaps.
-- Use a MySQL transaction.
-- Lock the doctor's row with SELECT ... FOR UPDATE.
-- Commit successful inserts.
-- Roll back rejected or failed inserts.
+| Availability ID | Time |
+|---|---|
+| 7 | 14:00–15:00 |
 
-### Testing Limitation
+The period was accepted because the date differed from October 26.
 
-The two-browser test involved closely timed submissions.
-It does not constitute a controlled simultaneous-request
-stress test.
+**Doctor ID 3 — October 29, 2026**
 
-### Summary
+| Availability ID | Time |
+|---|---|
+| 8 | 10:00–11:00 |
 
-Additional tests executed: 6
-Passed: 6
-Failed: 0
+During the two-browser-session test, the competing 10:30–11:30 request was rejected.
 
-The availability overlap protection passed all six
-additional checks.
+The database contained only one availability record for that date after the test.
 
-The new code still requires GitHub integration and
-post-merge regression verification.
+### 5.5 Transaction Support
 
+The `users` and `doctor_availability` tables were confirmed to use the InnoDB storage engine.
+
+InnoDB supports transactions and row-level locking, which are required by the implemented doctor-row locking approach.
+
+### 5.6 Testing Limitation
+
+The two-browser-session test involved closely timed requests but was not a controlled simultaneous-request stress test.
+
+Its successful result demonstrates correct behavior in the tested scenario, not conclusive proof of safety under precisely simultaneous execution.
+
+### 5.7 Availability Creation Test Summary
+
+**Tests Executed:** 6  
+**Passed:** 6  
+**Failed:** 0
 
 ---
 
-## US-08 Post-Merge Regression Testing
+## 6. Availability Creation Post-Merge Regression Test
 
-**Test ID:** US08-RT01
-**Date:** October 24, 2026
-**Tester:** Sewara Rashidi
-**Code Tested:** Merged main branch
-**User Story:** US-08 — Prevent Double Booking
+**Test ID:** US08-RT01  
+**Date:** October 24, 2026  
+**Tester:** Sewara Rashidi  
+**Code Tested:** Merged `main` branch
 
-### Objective
+### 6.1 Objective
 
-Verify that the merged implementation continues to reject
-overlapping doctor availability and does not save an
-invalid availability record.
+Verify that the merged availability creation code still prevents overlaps without inserting invalid records.
 
-### Test Procedure
+### 6.2 Test Procedure
 
-1. Update the local main branch from GitHub.
+1. Update the local `main` branch from GitHub.
 2. Start Apache and MySQL using XAMPP.
 3. Log in as Test Doctor (Doctor ID 3).
 4. Open Manage Availability.
-5. Attempt to add availability with these details:
-   - Date: October 26, 2026
-   - Start Time: 14:30
-   - End Time: 15:30
-6. Observe the application's response.
-7. Verify the database records using phpMyAdmin.
+5. Attempt to create availability on October 26, 2026, from 14:30–15:30.
+6. Observe the error response.
+7. Inspect the database using phpMyAdmin.
 
-### Expected Result
+### 6.3 Expected Result
 
-The system should reject the overlapping availability.
+The system must reject the overlapping period and must not create another availability record.
 
-No new availability record should be inserted.
+### 6.4 Actual Result
 
-### Actual Result
+The application rejected the request.
 
-The application rejected the overlapping availability.
-
-The database query returned only these two records:
+MySQL returned only the two existing availability records:
 
 | ID | Doctor ID | Date | Start | End |
 |---|---|---|---|---|
 | 4 | 3 | 2026-10-26 | 14:00 | 15:00 |
 | 6 | 3 | 2026-10-26 | 15:00 | 16:00 |
 
-No record for 14:30–15:30 was created.
+No 14:30–15:30 record was inserted.
 
-**Test Status: PASS**
+**Result: PASS**
 
-### Remaining Limitation
+---
 
-A controlled simultaneous-request stress test has
-not yet been performed.
+## 7. Doctor Availability Update Tests
 
-The earlier two-browser-session test passed, but
-it does not independently prove behavior under
-precisely simultaneous execution.
+**Date:** October 24, 2026  
+**Tester:** Sewara Rashidi  
+**Feature Branch:** `feature/s3-us08-availability-update-fix`  
+**Test IDs:** US08-UP01 to US08-UP04
 
-### Regression Conclusion
+### 7.1 Objective
 
-The US-08 doctor availability overlap protection
-continued to work correctly after merging into main.
+Verify that doctors cannot update an availability record to overlap another period on the same date.
 
-**Post-Merge Regression Tests: 1 PASS, 0 FAIL**
+The tests also verify that valid updates remain possible and that a record does not incorrectly conflict with itself.
+
+### 7.2 Implementation
+
+**Updated file:**
+
+`10-Source-Code/actions/availability_update.php`
+
+The implementation:
+
+- Checks existing availability for overlapping periods before updating.
+- Restricts overlap checking to the same doctor and date.
+- Excludes the availability record currently being edited using `id <> ?`.
+- Reuses the existing transaction and doctor-row locking.
+- Preserves existing ownership and confirmed-appointment checks.
+- Rolls back the transaction when an overlap is detected.
+
+### 7.3 Test Preparation
+
+Before updating availability ID 6, a read-only MySQL query checked for associated confirmed appointments.
+
+The query returned no rows, confirming that no confirmed appointments were associated with availability ID 6 in that test.
+
+### 7.4 Test Cases and Results
+
+| Test ID | Test Case | Actual Result | Status |
+|---|---|---|---|
+| US08-UP01 | Attempt to update availability #6 from 15:00–16:00 to 14:30–15:30 while #4 covers 14:00–15:00 | Overlapping update rejected | PASS |
+| US08-UP02 | Verify MySQL records after the rejected update | Availability #4 and #6 remained unchanged | PASS |
+| US08-UP03 | Update availability #6 to the non-overlapping period 15:30–16:30 | Update accepted and database result confirmed | PASS |
+| US08-UP04 | Save availability #6 again without changing its date or time | Update accepted without a false overlap error | PASS |
+
+### 7.5 Database Verification
+
+**After the rejected update:**
+
+| Availability ID | Date | Time |
+|---|---|---|
+| 4 | October 26, 2026 | 14:00–15:00 |
+| 6 | October 26, 2026 | 15:00–16:00 |
+
+**After the successful update:**
+
+| Availability ID | Date | Time |
+|---|---|---|
+| 4 | October 26, 2026 | 14:00–15:00 |
+| 6 | October 26, 2026 | 15:30–16:30 |
+
+This demonstrates that the overlap check rejected conflicting changes while allowing a valid update.
+
+### 7.6 PHP Syntax Verification
+
+The updated `availability_update.php` file passed PHP syntax validation.
+
+### 7.7 Availability Update Test Summary
+
+**Tests Executed:** 4  
+**Passed:** 4  
+**Failed:** 0
+
+---
+
+## 8. Availability Update Post-Merge Regression Test
+
+**Test ID:** US08-RT02  
+**Date:** October 24, 2026  
+**Tester:** Sewara Rashidi  
+**Code Tested:** Merged `main` branch
+
+### 8.1 Objective
+
+Verify that the availability update protection continues to reject overlapping modifications after merging the correction into `main`.
+
+### 8.2 Test Procedure
+
+1. Pull the latest `main` branch.
+2. Start the Clinic Appointment System locally.
+3. Log in as Test Doctor (ID 3).
+4. Open Manage Availability.
+5. Attempt to update availability #6 to October 26, 2026, from 14:30–15:30.
+6. Check the application's response.
+7. Verify availability #4 and #6 in MySQL.
+
+### 8.3 Expected Result
+
+The system must reject the overlap and preserve both original records.
+
+### 8.4 Actual Result
+
+The application rejected the overlapping update.
+
+The database values remained:
+
+| Availability ID | Date | Start | End |
+|---|---|---|---|
+| 4 | 2026-10-26 | 14:00 | 15:00 |
+| 6 | 2026-10-26 | 15:30 | 16:30 |
+
+**Result: PASS**
+
+---
+
+## 9. Combined Testing Summary
+
+| Testing Category | Test IDs | Executed | Passed | Failed |
+|---|---|---:|---:|---:|
+| Appointment double-booking | US08-T01–T05 | 5 | 5 | 0 |
+| Availability creation and database checks | US08-AV01–AV06 | 6 | 6 | 0 |
+| Availability update | US08-UP01–UP04 | 4 | 4 | 0 |
+| Post-merge regression | US08-RT01–RT02 | 2 | 2 | 0 |
+| **Total** | | **17** | **17** | **0** |
+
+**Total Tests Executed:** 17  
+**Passed:** 17  
+**Failed:** 0
+
+All seventeen documented tests passed in their respective test environments.
+
+## 10. Remaining Limitations and Activities
+
+The following items have not yet been completed or confirmed:
+
+1. **Controlled simultaneous-request testing:** Precisely concurrent patient booking and availability requests have not been independently stress-tested.
+2. **End-to-end overlapping-availability scenario:** This was originally identified as a possible test. The Product Owner subsequently required overlapping availability to be prohibited, so the normal application should reject such periods rather than permit their creation.
+3. **SD04 UML update:** The Doctor Availability Management Sequence Diagram must be updated to represent the implemented overlap validation, transactions, and rollback behavior.
+4. **Final acceptance:** Product Owner acceptance and final Definition of Done confirmation have not been recorded.
+
+The original US-08 test results and both availability improvements have been preserved in this report.
+
+## 11. Conclusion
+
+During Sprint 3, US-08 functionality was tested across appointment booking, availability creation, availability updates, database integrity, and post-merge regression scenarios.
+
+The appointment-booking tests confirmed that the tested duplicate booking was rejected and that a hypothetical overlapping appointment slot was excluded from available booking times.
+
+The availability creation tests confirmed that the system rejected duplicate and overlapping availability periods while allowing valid adjacent periods and different-date entries.
+
+The availability update tests confirmed that doctors could not move existing availability into conflicting periods, while legitimate updates remained possible.
+
+Both availability improvements were merged into the main GitHub branch and passed their recorded post-merge regression tests.
+
+**Overall Testing Result: 17 PASS, 0 FAIL.**
+
+**Current Status:** Implementation merged and documented tests passed. SD04 modeling, final acceptance, and any required additional concurrency verification remain pending.
