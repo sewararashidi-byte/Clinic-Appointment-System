@@ -214,6 +214,48 @@ try {
         );
     }
 
+/*
+ * Sprint 3 - US-08:
+ * Prevent an updated availability period from
+ * overlapping another period for the same doctor
+ * on the same date.
+ *
+ * Exclude the record currently being updated.
+ */
+$overlapStmt = $conn->prepare(
+    "SELECT id
+     FROM doctor_availability
+     WHERE doctor_id = ?
+       AND availability_date = ?
+       AND id <> ?
+       AND start_time < ?
+       AND end_time > ?
+     LIMIT 1"
+);
+
+$overlapStmt->bind_param(
+    'isiss',
+    $doctorId,
+    $availabilityDate,
+    $availabilityId,
+    $endTime,
+    $startTime
+);
+
+$overlapStmt->execute();
+
+$overlappingAvailability = $overlapStmt
+    ->get_result()
+    ->fetch_assoc();
+
+$overlapStmt->close();
+
+if ($overlappingAvailability) {
+    throw new DomainException(
+        'This availability period overlaps an existing period.'
+    );
+}
+
     /*
      * No confirmed bookings exist.
      * The doctor can safely update the record.
