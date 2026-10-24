@@ -164,3 +164,70 @@ No change to the appointment-booking implementation was required based on the co
 However, concurrent booking and end-to-end overlapping-availability scenarios have not yet been fully verified.
 
 **Current Status:** Five tests passed; additional verification remains pending. Full US-08 completion has not yet been confirmed.
+
+
+---
+
+## Additional US-08 Testing — Doctor Availability Overlap Protection
+
+**Date:** October 24, 2026
+**Tester:** Sewara Rashidi
+**Branch:** feature/s3-availability-overlap-protection
+
+### Objective
+
+Verify that doctors cannot create overlapping availability
+periods on the same date, as confirmed by the Product Owner.
+
+### Test Cases and Results
+
+| Test ID | Test Case | Actual Result | Status |
+|---|---|---|---|
+| US08-AV01 | Create partially overlapping availability (14:30–15:30) when 14:00–15:00 exists | Request rejected; MySQL retained only the original period | PASS |
+| US08-AV02 | Create an exact duplicate (14:00–15:00) | System rejected the duplicate | PASS |
+| US08-AV03 | Create adjacent availability (15:00–16:00) | Request accepted; MySQL confirmed both adjacent periods | PASS |
+| US08-AV04 | Create availability on a different date (October 27, 14:00–15:00) | Request accepted and record verified in MySQL | PASS |
+| US08-AV05 | Submit competing overlapping periods using two browser sessions | First request accepted; second rejected; MySQL contained only one record | PASS |
+| US08-AV06 | Check database storage engines | Both users and doctor_availability tables use InnoDB | PASS |
+
+### Database Evidence
+
+Doctor ID 3, October 26, 2026:
+- Availability ID 4: 14:00–15:00
+- Availability ID 6: 15:00–16:00
+
+Doctor ID 3, October 27, 2026:
+- Availability ID 7: 14:00–15:00
+
+Doctor ID 3, October 29, 2026:
+- Availability ID 8: 10:00–11:00
+
+Only one record existed for October 29 after the
+competing overlapping requests.
+
+### Technical Implementation
+
+Updated availability_create.php to:
+- Check existing availability for time overlaps.
+- Use a MySQL transaction.
+- Lock the doctor's row with SELECT ... FOR UPDATE.
+- Commit successful inserts.
+- Roll back rejected or failed inserts.
+
+### Testing Limitation
+
+The two-browser test involved closely timed submissions.
+It does not constitute a controlled simultaneous-request
+stress test.
+
+### Summary
+
+Additional tests executed: 6
+Passed: 6
+Failed: 0
+
+The availability overlap protection passed all six
+additional checks.
+
+The new code still requires GitHub integration and
+post-merge regression verification.

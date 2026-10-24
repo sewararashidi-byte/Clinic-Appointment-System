@@ -80,6 +80,68 @@ if ($startTime >= $endTime) {
 }
 
 /*
+ * Sprint 3 - US-08:
+ * Begin a transaction and lock the doctor's database row.
+ *
+ * This ensures that simultaneous availability requests
+ * for the same doctor are processed one at a time.
+ */
+$conn->begin_transaction();
+
+$lockStmt = $conn->prepare(
+    "SELECT id
+     FROM users
+     WHERE id = ?
+     FOR UPDATE"
+);
+
+$lockStmt->bind_param("i", $doctorId);
+$lockStmt->execute();
+$lockStmt->close();
+
+/*
+ * Sprint 3 - US-08:
+ * Check whether the new availability overlaps
+ * an existing period for the same doctor and date.
+ */
+$overlapStmt = $conn->prepare(
+    "SELECT 1
+     FROM doctor_availability
+     WHERE doctor_id = ?
+       AND availability_date = ?
+       AND start_time < ?
+       AND end_time > ?
+     LIMIT 1"
+);
+
+$overlapStmt->bind_param(
+    "isss",
+    $doctorId,
+    $availabilityDate,
+    $endTime,
+    $startTime
+);
+
+$overlapStmt->execute();
+
+$overlapExists =
+    $overlapStmt->get_result()->num_rows > 0;
+
+$overlapStmt->close();
+
+
+if ($overlapExists) {
+    $_SESSION['availability_error'] =
+        'This availability period overlaps an existing period.';
+
+    $conn->rollback();
+    $conn->close();
+
+    header('Location: ../dashboards/doctor-dashboard.php');
+    exit;
+}
+
+/*
  * Insert the doctor's availability
  * using a prepared statement.
  */
@@ -108,13 +170,26 @@ $stmt->bind_param(
  * Execute the insert and store
  * a success or error message.
  */
-if ($stmt->execute()) {
-    $_SESSION['availability_success'] =
-        'Availability added successfully.';
-} else {
+
+try {
+    if ($stmt->execute()) {
+        $conn->commit();
+
+        $_SESSION['availability_success'] =
+            'Availability added successfully.';
+    } else {
+        $conn->rollback();
+
+        $_SESSION['availability_error'] =
+            'Unable to add availability. Please try again.';
+    }
+} catch (mysqli_sql_exception $e) {
+    $conn->rollback();
+
     $_SESSION['availability_error'] =
         'Unable to add availability. Please try again.';
 }
+
 
 $stmt->close();
 $conn->close();
