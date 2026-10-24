@@ -295,17 +295,51 @@ No PHP syntax errors were reported.
 
 ## 12. Combined Testing Summary
 
+
 | Testing Category | Tester | Executed | Passed | Failed |
 |---|---|---:|---:|---:|
 | Backend and database | Sewara Rashidi | 3 | 3 | 0 |
 | Frontend and integration | Sonbol Almas | 6 | 6 | 0 |
-| **Total** | **Both Developers** | **9** | **9** | **0** |
+| Post-merge regression | Sewara Rashidi | 1 | 1 | 0 |
+| **Total** | **Both Developers** | **10** | **10** | **0** |
 
-**Total Tests Executed:** 9  
-**Passed:** 9  
+**Total Tests Executed:** 10
+**Passed:** 10
 **Failed:** 0
 
-All nine documented test cases passed.
+All ten documented test cases passed.
+
+
+### 12.1 Post-Merge Regression Test
+
+**Test ID:** US11-RT01
+**Date:** October 24, 2026
+**Tester:** Sewara Rashidi
+**Branch:** main (merged implementation)
+
+**Test Objective:**
+Verify that Sonbol's confirmation frontend works correctly
+with Sewara's backend after integration into main.
+
+**Test Procedure:**
+1. Pull the latest main branch.
+2. Start Apache and MySQL in XAMPP.
+3. Log in as the patient with ID 8.
+4. Open appointment-confirmation.php?appointment_id=5.
+5. Verify the displayed appointment information.
+
+**Expected Result:**
+- Appointment Reference: #5
+- Doctor: Test Doctor
+- Date: October 23, 2026
+- Time: 10:00–10:30 AM
+- Status: Confirmed
+
+**Actual Result:**
+The merged confirmation page displayed the expected
+appointment information.
+
+**Status:** PASS
 
 ---
 
@@ -325,7 +359,7 @@ The broader US-08 concurrency testing remains a separate Sprint 3 activity.
 
 ## 14. Conclusion
 
-The Sprint 3 US-11 Appointment Confirmation functionality passed nine documented backend, frontend, security, and integration test cases.
+The Sprint 3 US-11 Appointment Confirmation functionality passed ten documented backend, frontend, security, and integration test cases.
 
 Sewara successfully developed the backend confirmation retrieval functionality and verified the database and ownership-filtering behavior.
 
@@ -333,7 +367,7 @@ Sonbol successfully implemented the confirmation interface and connected the app
 
 Testing confirmed that the system displays accurate appointment information, automatically redirects after a successful booking, rejects invalid confirmation references, and restricts access to another patient's appointment information in the tested scenarios.
 
-**Overall Test Result:** 9 PASS, 0 FAIL.
+**Overall Test Result:** 10 PASS, 0 FAIL.
 
 **Current Status:** Implementation tested locally. Final GitHub integration, regression testing, and UML updates remain pending.
 

@@ -1,0 +1,133 @@
+
+sequenceDiagram
+    autonumber
+
+    actor Patient
+    participant Page as Doctor Details Page
+    participant DoctorRepo as Doctor Repository
+    participant SlotRepo as Appointment Repository
+    participant Booking as Booking Action
+    participant ConfirmPage as Confirmation Page
+    participant ConfirmLoader as Confirmation Data Loader
+    participant DB as MySQL Database
+
+    Patient->>Page: Open Doctor Details
+    Page->>DoctorRepo: getDoctorById(doctorId)
+    DoctorRepo->>DB: Retrieve active doctor profile
+    DB-->>DoctorRepo: Doctor information
+    DoctorRepo-->>Page: Doctor details
+
+    alt Doctor exists
+        Page->>DoctorRepo: getDoctorAvailability(doctorId)
+        DoctorRepo->>DB: Retrieve future availability
+        DB-->>DoctorRepo: Availability records
+        DoctorRepo-->>Page: Availability periods
+
+        Page->>SlotRepo: getAvailableAppointmentSlots()
+        SlotRepo->>DB: Retrieve confirmed appointments
+        DB-->>SlotRepo: Booked appointment times
+        SlotRepo-->>Page: Available appointment slots
+
+        Page-->>Patient: Display doctor and available slots
+
+        %% Sprint 2 - Appointment Date Selection
+
+        opt Patient selects an appointment date
+            Patient->>Page: Select date and click Show Available Slots
+            Page->>DoctorRepo: Retrieve current availability
+            DoctorRepo->>DB: Query doctor availability
+            DB-->>DoctorRepo: Availability records
+            DoctorRepo-->>Page: Current availability
+
+            Page->>SlotRepo: Get available appointment slots
+            SlotRepo->>DB: Retrieve confirmed appointments
+            DB-->>SlotRepo: Booked appointment times
+            SlotRepo-->>Page: Available appointment slots
+
+            Page->>Page: Filter slots by selected date
+
+            alt Slots found for selected date
+                Page-->>Patient: Display slots for selected date
+            else No slots for selected date
+                Page-->>Patient: Display date-specific no-slots message
+            end
+        end
+
+        %% Sprint 2 - Clear Appointment Date Filter
+
+        opt Patient clicks Show All Dates
+            Patient->>Page: Click Show All Dates
+            Page->>Page: Reload page without date filter
+            Page->>DoctorRepo: Retrieve current availability
+            DoctorRepo-->>Page: Availability periods
+            Page->>SlotRepo: Get available appointment slots
+            SlotRepo->>DB: Retrieve confirmed appointments
+            DB-->>SlotRepo: Booked appointment times
+            SlotRepo-->>Page: All available appointment slots
+            Page-->>Patient: Display slots for all available dates
+        end
+
+        %% Sprint 2 - Appointment Booking
+        %% Sprint 3 - US-11 Appointment Confirmation
+
+        opt Patient selects an available slot
+            Patient->>Page: Click Book Appointment
+            Page->>Booking: POST selected slot and CSRF token
+
+            Booking->>Booking: Check patient role and validate request
+
+            alt Invalid request or security token
+                Booking-->>Patient: Redirect with booking error
+
+            else Valid booking request
+                Booking->>DB: Begin transaction and lock doctor
+                DB-->>Booking: Doctor record
+
+                Booking->>DoctorRepo: Recheck doctor availability
+                DoctorRepo->>DB: Retrieve availability records
+                DB-->>DoctorRepo: Current availability
+                DoctorRepo-->>Booking: Availability periods
+
+                Booking->>SlotRepo: Recheck available slots
+                SlotRepo->>DB: Retrieve confirmed appointments
+                DB-->>SlotRepo: Current booked times
+                SlotRepo-->>Booking: Remaining available slots
+
+                alt Selected slot is available
+                    Booking->>DB: Insert confirmed appointment
+                    DB-->>Booking: Insert successful
+                    Booking->>Booking: Get new appointment ID
+                    Booking->>DB: Commit transaction
+                    Booking->>Booking: Save latest appointment ID in session
+
+                    Booking-->>Patient: Redirect to confirmation page with appointment ID
+                    Patient->>ConfirmPage: Open redirected confirmation page
+
+                    ConfirmPage->>ConfirmLoader: Load appointment confirmation data
+                    ConfirmLoader->>ConfirmLoader: Check patient role and appointment ID
+
+                    opt Appointment ID is valid
+                        ConfirmLoader->>SlotRepo: getPatientAppointmentConfirmation(appointmentId, patientId)
+                        SlotRepo->>DB: Retrieve appointment and doctor for matching patient
+                        DB-->>SlotRepo: Appointment details or no matching record
+                        SlotRepo-->>ConfirmLoader: Confirmation record or null
+                    end
+
+                    ConfirmLoader-->>ConfirmPage: Confirmation data or error message
+
+                    alt Confirmation record found
+                        ConfirmPage-->>Patient: Display reference, doctor, date, time and status
+                    else Invalid or unauthorized appointment
+                        ConfirmPage-->>Patient: Display not-found or permission message
+                    end
+
+                else Slot unavailable
+                    Booking->>DB: Roll back transaction
+                    Booking-->>Patient: Redirect with booking error
+                end
+            end
+        end
+
+    else Doctor not found
+        Page-->>Patient: Display doctor unavailable message
+    end
