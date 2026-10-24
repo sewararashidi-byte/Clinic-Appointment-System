@@ -202,12 +202,17 @@ $conn->commit();
 // Remember the latest successful booking for confirmation.
 $_SESSION['latest_booking_appointment_id'] = $appointmentId;
 
-// Keep the existing success message working.
-bookingResponse(
-    $doctorId,
-    'booking_success',
-    'Appointment booked successfully.'
+
+
+/*
+ * US-11: Redirect the patient to the confirmation page
+ * after the appointment is successfully booked.
+ */
+header(
+    'Location: ../patient/appointment-confirmation.php?appointment_id='
+    . $appointmentId
 );
+exit;
 
 
 } catch (DomainException $e) {
