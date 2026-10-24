@@ -1,0 +1,168 @@
+
+sequenceDiagram
+    autonumber
+
+    actor Doctor
+    participant Dashboard as Doctor Dashboard
+    participant Page as Manage Availability Page
+    participant Auth as Authentication
+    participant CreateAction as Availability Create Action
+    participant UpdateAction as Availability Update Action
+    participant DeleteAction as Availability Delete Action
+    participant DB as MySQL Database
+
+    Doctor->>Dashboard: Click Manage Availability
+    Dashboard->>Page: Open availability.php
+
+    Page->>Auth: requireRole doctor
+
+    alt Doctor is authorized
+        Auth-->>Page: Access granted
+
+        Page->>DB: Retrieve doctor's availability records
+        DB-->>Page: Availability records
+        Page-->>Doctor: Display availability management page
+
+        %% Sprint 3 - US-08: Create Availability
+
+        alt Create Availability
+            Doctor->>Page: Enter date, start time and end time
+            Doctor->>Page: Click Add Availability
+            Page->>CreateAction: POST availability data
+
+            CreateAction->>Auth: Verify doctor role
+            Auth-->>CreateAction: Authorization result
+            CreateAction->>CreateAction: Validate required fields, date and time
+
+            alt Invalid input
+                CreateAction-->>Dashboard: Redirect with validation error
+                Dashboard-->>Doctor: Display error message
+
+            else Valid input
+                CreateAction->>DB: Begin transaction
+                CreateAction->>DB: Lock doctor row using SELECT FOR UPDATE
+                DB-->>CreateAction: Doctor row locked
+
+                CreateAction->>DB: Check overlapping availability for same doctor and date
+                DB-->>CreateAction: Overlap check result
+
+                alt Overlapping availability exists
+                    CreateAction->>DB: Roll back transaction
+                    CreateAction-->>Dashboard: Redirect with overlap error
+                    Dashboard-->>Doctor: Display overlap message
+
+                else No overlapping availability
+                    CreateAction->>DB: INSERT doctor availability
+
+                    alt Insert successful
+                        DB-->>CreateAction: Availability inserted
+                        CreateAction->>DB: Commit transaction
+                        CreateAction-->>Dashboard: Redirect with success message
+                        Dashboard-->>Doctor: Display availability added successfully
+
+                    else Insert failed
+                        DB-->>CreateAction: Database error
+                        CreateAction->>DB: Roll back transaction
+                        CreateAction-->>Dashboard: Redirect with error message
+                        Dashboard-->>Doctor: Display availability creation error
+                    end
+                end
+            end
+
+        %% Sprint 3 - US-08: Update Availability
+
+        else Update Availability
+            Doctor->>Page: Modify availability date or time
+            Doctor->>Page: Click Update
+            Page->>UpdateAction: POST availability ID and updated data
+
+            UpdateAction->>Auth: Verify doctor role
+            Auth-->>UpdateAction: Authorization result
+            UpdateAction->>UpdateAction: Validate availability ID, date and time
+
+            alt Invalid input
+                UpdateAction-->>Dashboard: Redirect with validation error
+                Dashboard-->>Doctor: Display error message
+
+            else Valid input
+                UpdateAction->>DB: Begin transaction
+                UpdateAction->>DB: Lock doctor row using SELECT FOR UPDATE
+                DB-->>UpdateAction: Doctor row locked
+
+                UpdateAction->>DB: Lock availability row and verify ownership
+                DB-->>UpdateAction: Ownership check result
+
+                alt Record not found or access denied
+                    UpdateAction->>DB: Roll back transaction
+                    UpdateAction-->>Dashboard: Redirect with access error
+                    Dashboard-->>Doctor: Display access error
+
+                else Availability belongs to doctor
+                    UpdateAction->>DB: Check associated confirmed appointments
+                    DB-->>UpdateAction: Confirmed booking check result
+
+                    alt Confirmed appointments exist
+                        UpdateAction->>DB: Roll back transaction
+                        UpdateAction-->>Dashboard: Redirect with booking restriction
+                        Dashboard-->>Doctor: Display cannot-update message
+
+                    else No confirmed appointments
+                        UpdateAction->>DB: Check overlapping periods excluding current ID
+                        DB-->>UpdateAction: Overlap check result
+
+                        alt Overlapping availability exists
+                            UpdateAction->>DB: Roll back transaction
+                            UpdateAction-->>Dashboard: Redirect with overlap error
+                            Dashboard-->>Doctor: Display overlap message
+
+                        else No overlapping availability
+                            UpdateAction->>DB: UPDATE doctor availability
+
+                            alt Update successful
+                                DB-->>UpdateAction: Availability updated
+                                UpdateAction->>DB: Commit transaction
+                                UpdateAction-->>Dashboard: Redirect with success message
+                                Dashboard-->>Doctor: Display availability updated successfully
+
+                            else Update failed
+                                DB-->>UpdateAction: Database error
+                                UpdateAction->>DB: Roll back transaction
+                                UpdateAction-->>Dashboard: Redirect with error message
+                                Dashboard-->>Doctor: Display availability update error
+                            end
+                        end
+                    end
+                end
+            end
+
+        %% Original Sprint 2 - Delete Availability
+
+        else Delete Availability
+            Doctor->>Page: Click Delete
+            Page-->>Doctor: Request deletion confirmation
+            Doctor->>Page: Confirm deletion
+            Page->>DeleteAction: POST availability ID
+
+            DeleteAction->>Auth: Verify doctor role
+            Auth-->>DeleteAction: Authorization result
+
+            DeleteAction->>DB: Verify availability ownership
+            DB-->>DeleteAction: Ownership check result
+
+            alt Deletion allowed
+                DeleteAction->>DB: DELETE doctor availability
+                DB-->>DeleteAction: Delete successful
+                DeleteAction-->>Dashboard: Redirect with success message
+                Dashboard-->>Doctor: Display availability deleted successfully
+
+            else Deletion not allowed
+                DeleteAction-->>Dashboard: Redirect with error message
+                Dashboard-->>Doctor: Display deletion error
+            end
+        end
+
+    else User is not a doctor
+        Auth-->>Page: Access denied
+        Page-->>Dashboard: Redirect to role dashboard
+        Dashboard-->>Doctor: Display unauthorized access message
+    end
