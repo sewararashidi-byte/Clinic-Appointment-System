@@ -231,3 +231,70 @@ additional checks.
 
 The new code still requires GitHub integration and
 post-merge regression verification.
+
+
+---
+
+## US-08 Post-Merge Regression Testing
+
+**Test ID:** US08-RT01
+**Date:** October 24, 2026
+**Tester:** Sewara Rashidi
+**Code Tested:** Merged main branch
+**User Story:** US-08 — Prevent Double Booking
+
+### Objective
+
+Verify that the merged implementation continues to reject
+overlapping doctor availability and does not save an
+invalid availability record.
+
+### Test Procedure
+
+1. Update the local main branch from GitHub.
+2. Start Apache and MySQL using XAMPP.
+3. Log in as Test Doctor (Doctor ID 3).
+4. Open Manage Availability.
+5. Attempt to add availability with these details:
+   - Date: October 26, 2026
+   - Start Time: 14:30
+   - End Time: 15:30
+6. Observe the application's response.
+7. Verify the database records using phpMyAdmin.
+
+### Expected Result
+
+The system should reject the overlapping availability.
+
+No new availability record should be inserted.
+
+### Actual Result
+
+The application rejected the overlapping availability.
+
+The database query returned only these two records:
+
+| ID | Doctor ID | Date | Start | End |
+|---|---|---|---|---|
+| 4 | 3 | 2026-10-26 | 14:00 | 15:00 |
+| 6 | 3 | 2026-10-26 | 15:00 | 16:00 |
+
+No record for 14:30–15:30 was created.
+
+**Test Status: PASS**
+
+### Remaining Limitation
+
+A controlled simultaneous-request stress test has
+not yet been performed.
+
+The earlier two-browser-session test passed, but
+it does not independently prove behavior under
+precisely simultaneous execution.
+
+### Regression Conclusion
+
+The US-08 doctor availability overlap protection
+continued to work correctly after merging into main.
+
+**Post-Merge Regression Tests: 1 PASS, 0 FAIL**
