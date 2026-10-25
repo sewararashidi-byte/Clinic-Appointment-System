@@ -1,0 +1,48 @@
+
+sequenceDiagram
+    autonumber
+
+    actor Doctor
+    participant Page as Doctor Appointments Page
+    participant Loader as Doctor Appointments Data Loader
+    participant Auth as Authentication
+    participant Repo as Appointment Repository
+    participant DB as MySQL Database
+
+    Doctor->>Page: Open My Appointments
+    Page->>Loader: Load appointment information
+
+    Loader->>Auth: requireRole doctor
+
+    alt User is not an authorized doctor
+        Auth-->>Doctor: Redirect to login or appropriate dashboard
+
+    else Doctor is authorized
+        Auth-->>Loader: Access granted
+
+        Loader->>Loader: Get doctor ID from session
+
+        alt Valid doctor session
+            Loader->>Repo: getDoctorAppointments(doctorId)
+
+            Repo->>DB: SELECT confirmed appointments for doctor
+            DB-->>Repo: Appointment records
+            Repo-->>Loader: Doctor appointment list
+
+            Loader-->>Page: Appointment information
+
+            alt Appointments found
+                Page-->>Doctor: Display patient name, date, time and reference
+
+            else No confirmed appointments
+                Page-->>Doctor: Display no appointments message
+            end
+
+        else Invalid doctor session
+            Loader-->>Page: Return session error
+            Page-->>Doctor: Display error message
+        end
+    end
+
+    Note over Doctor,Page: Doctor has read-only access
+    Note over Repo,DB: No appointment update or cancellation
