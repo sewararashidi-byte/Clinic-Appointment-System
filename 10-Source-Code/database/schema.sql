@@ -4,19 +4,41 @@ COLLATE utf8mb4_general_ci;
 
 USE clinic_appointment_system;
 
+
+-- =====================================================
+-- Sprint 3 - US-04: Patient Profile Management
+-- =====================================================
+
 CREATE TABLE IF NOT EXISTS users (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+
     full_name VARCHAR(100) NOT NULL,
-    age TINYINT UNSIGNED NOT NULL,
+    age TINYINT UNSIGNED NULL,
     phone VARCHAR(20) NOT NULL,
+
+    blood_type VARCHAR(5) NULL,
+    disease_type VARCHAR(255) NULL,
+    close_relatives_count SMALLINT UNSIGNED NULL,
+
     email VARCHAR(150) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
-    role ENUM('patient', 'doctor', 'receptionist', 'administrator')
-        NOT NULL DEFAULT 'patient',
-    account_status ENUM('pending', 'active', 'rejected')
-        NOT NULL DEFAULT 'pending',
+
+    role ENUM(
+        'patient',
+        'doctor',
+        'receptionist',
+        'administrator'
+    ) NOT NULL DEFAULT 'patient',
+
+    account_status ENUM(
+        'pending',
+        'active',
+        'rejected'
+    ) NOT NULL DEFAULT 'pending',
+
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
 
 -- =====================================================
 -- Sprint 2 - Doctor Professional Profile
