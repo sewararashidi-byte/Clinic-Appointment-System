@@ -198,3 +198,58 @@ function getPatientAppointmentConfirmation(
 
     return $appointment ?: null;
 }
+
+
+/**
+ * Sprint 3 - US-16: Doctor Appointment Management
+ *
+ * Retrieve confirmed appointments belonging to
+ * a specific doctor.
+ *
+ * This function only reads appointment information.
+ * Doctors cannot update or cancel appointments here.
+ */
+function getDoctorAppointments(
+    mysqli $conn,
+    int $doctorId
+): array {
+
+    if ($doctorId <= 0) {
+        return [];
+    }
+
+    $sql = "
+        SELECT
+            a.id AS appointment_id,
+            a.appointment_date,
+            a.start_time,
+            a.end_time,
+            a.status,
+            u.full_name AS patient_name
+        FROM appointments a
+        INNER JOIN users u
+            ON u.id = a.patient_id
+        WHERE a.doctor_id = ?
+          AND a.status = 'confirmed'
+        ORDER BY
+            a.appointment_date ASC,
+            a.start_time ASC
+    ";
+
+    $stmt = $conn->prepare($sql);
+
+    $stmt->bind_param(
+        'i',
+        $doctorId
+    );
+
+    $stmt->execute();
+
+    $appointments = $stmt
+        ->get_result()
+        ->fetch_all(MYSQLI_ASSOC);
+
+    $stmt->close();
+
+    return $appointments;
+}
