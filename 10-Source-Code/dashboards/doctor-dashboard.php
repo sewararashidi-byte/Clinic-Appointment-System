@@ -98,7 +98,12 @@ $fullName = $_SESSION['full_name'] ?? 'Doctor';
             >
                 Logout
             </a>
-
+<a
+    href="../doctor/appointments.php"
+    class="btn btn-outline-primary"
+>
+    My Appointments
+</a>
         </div>
 
     </div>
