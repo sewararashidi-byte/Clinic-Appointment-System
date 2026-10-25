@@ -79,7 +79,12 @@ $fullName = $_SESSION['full_name'] ?? 'Patient';
             >
                 Find a Doctor
             </a>
-
+<a
+    href="../patient/profile.php"
+    class="btn btn-outline-primary"
+>
+    My Profile
+</a>
             <a
                 href="../logout.php"
                 class="btn btn-danger"
