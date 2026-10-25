@@ -1,0 +1,93 @@
+
+sequenceDiagram
+    autonumber
+
+    actor Patient
+    participant Page as Patient Profile Page
+    participant Loader as Patient Profile Data Loader
+    participant Auth as Authentication
+    participant Action as Profile Update Action
+    participant Repo as Patient Profile Repository
+    participant DB as MySQL Database
+
+    %% US-04 - View Patient Profile
+
+    Patient->>Page: Open My Profile
+    Page->>Loader: Load patient profile
+    Loader->>Auth: Verify patient role
+
+    alt User is not an authenticated patient
+        Auth-->>Patient: Redirect to login or role dashboard
+
+    else Patient is authenticated
+        Auth-->>Loader: Access granted
+        Loader->>Loader: Get patient ID from session
+        Loader->>Loader: Generate or reuse CSRF token
+
+        Loader->>Repo: getPatientProfile(patientId)
+        Repo->>DB: SELECT profile for patient ID and role
+        DB-->>Repo: Patient profile or no matching record
+        Repo-->>Loader: Profile data or null
+
+        alt Patient profile found
+            Loader-->>Page: Return profile and CSRF token
+            Page-->>Patient: Display profile and edit form
+
+            %% US-04 - Update Patient Profile
+
+            opt Patient updates profile
+                Patient->>Page: Edit profile fields
+                Patient->>Page: Click Save Changes
+
+                Page->>Action: POST profile fields and CSRF token
+                Action->>Auth: Verify patient role
+                Auth-->>Action: Authorization result
+
+                Action->>Action: Require POST and validate CSRF token
+
+                alt Invalid request or CSRF token
+                    Action-->>Patient: Redirect with security error
+
+                else Valid request and token
+                    Action->>Action: Get patient ID from session
+                    Action->>Action: Validate full name and phone
+                    Action->>Action: Validate optional profile fields
+
+                    alt Invalid profile information
+                        Action-->>Patient: Redirect with validation error
+
+                    else Valid profile information
+                        Action->>Action: Convert empty optional fields to NULL
+
+                        Action->>Repo: updatePatientProfile(patientId, profile data)
+                        Repo->>DB: UPDATE users WHERE ID and patient role
+                        DB-->>Repo: Database update result
+                        Repo-->>Action: Update result
+
+                        alt Update successful
+                            Action-->>Patient: Redirect with success message
+                            Patient->>Page: Reload My Profile
+                            Page->>Loader: Load updated profile
+                            Loader->>Repo: getPatientProfile(patientId)
+                            Repo->>DB: SELECT updated patient profile
+                            DB-->>Repo: Updated profile information
+                            Repo-->>Loader: Updated profile
+                            Loader-->>Page: Updated data
+                            Page-->>Patient: Display saved profile
+
+                        else Update failed
+                            Action-->>Patient: Redirect with update error
+                        end
+                    end
+                end
+            end
+
+        else Patient profile not found
+            Loader-->>Page: Return profile error
+            Page-->>Patient: Display profile unavailable message
+        end
+    end
+
+    Note over Patient,DB: Only the authenticated patient's profile is accessed
+    Note over Action,Repo: Full name and phone are required
+    Note over Action,Repo: Other profile fields are optional
