@@ -1,0 +1,100 @@
+
+sequenceDiagram
+    autonumber
+
+    actor Patient
+    participant Page as Patient Appointments Page
+    participant Action as appointment_reschedule.php
+    participant Repo as appointment_repository.php
+    participant DoctorRepo as doctor_repository.php
+    participant DB as MariaDB
+
+    Patient->>Page: Select Reschedule Appointment
+    Page->>DoctorRepo: Request available slots for original doctor
+    DoctorRepo->>DB: Retrieve doctor availability
+    DB-->>DoctorRepo: Availability records
+    DoctorRepo-->>Page: Availability information
+    Page-->>Patient: Display alternative available slots
+
+    Patient->>Page: Select new date and time
+
+    Page->>Action: POST appointment ID, availability ID, date, time and CSRF
+
+    Action->>Action: Validate patient role, POST data and CSRF
+
+    alt Invalid request
+        Action-->>Page: Redirect with error message
+
+    else Valid request
+
+        Action->>Repo: reschedulePatientAppointment()
+
+        Repo->>DB: Look up appointment by ID and patient ID
+
+        alt Appointment missing or not owned
+            DB-->>Repo: No matching appointment
+            Repo-->>Action: DomainException
+
+        else Appointment found
+
+            DB-->>Repo: Original doctor ID
+
+            Repo->>DB: Begin transaction
+            Repo->>DB: Lock doctor row FOR UPDATE
+            Repo->>DB: Lock original appointment FOR UPDATE
+
+            DB-->>Repo: Original appointment details
+
+            Repo->>Repo: Verify confirmed status
+            Repo->>Repo: Check original appointment 2-hour cutoff
+            Repo->>Repo: Verify new date and time are different
+
+            alt Original appointment not eligible
+                Repo->>DB: Roll back transaction
+                Repo-->>Action: DomainException
+
+            else Original appointment eligible
+
+                Repo->>DoctorRepo: getDoctorAvailability(conn, doctorId)
+                DoctorRepo->>DB: Retrieve current availability
+                DB-->>DoctorRepo: Availability records
+                DoctorRepo-->>Repo: Doctor availability
+
+                Repo->>Repo: Generate available appointment slots
+                Repo->>DB: Check conflicts with confirmed appointments
+                DB-->>Repo: Existing confirmed bookings
+
+                Repo->>Repo: Verify selected slot belongs to same doctor
+                Repo->>Repo: Verify selected slot is available
+
+                alt Selected slot unavailable or conflicting
+                    Repo->>DB: Roll back transaction
+                    Repo-->>Action: DomainException
+
+                else Selected slot valid
+
+                    Repo->>Repo: Obtain validated end time
+
+                    Repo->>DB: UPDATE existing appointment date and time
+
+                    alt Update fails
+                        Repo->>DB: Roll back transaction
+                        Repo-->>Action: Error
+
+                    else Update succeeds
+                        Repo->>DB: Commit transaction
+                        Repo-->>Action: true
+                    end
+                end
+            end
+        end
+
+        alt Rescheduling succeeded
+            Action-->>Page: Redirect with success message
+
+        else Rescheduling failed
+            Action-->>Page: Redirect with error message
+        end
+    end
+
+    Page-->>Patient: Display rescheduling result

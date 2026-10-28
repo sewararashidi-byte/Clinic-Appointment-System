@@ -1,0 +1,65 @@
+
+sequenceDiagram
+    autonumber
+
+    actor Patient
+    participant Page as Patient Appointments Page
+    participant Action as appointment_cancel.php
+    participant Repo as appointment_repository.php
+    participant DB as MariaDB
+
+    Patient->>Page: Select Cancel Appointment
+    Page->>Action: POST appointment_id and csrf_token
+
+    Action->>Action: Validate patient role, POST, ID and CSRF
+
+    alt Invalid request
+        Action-->>Page: Redirect with error message
+
+    else Valid request
+        Action->>Repo: cancelPatientAppointment(conn, appointmentId, patientId)
+
+        Repo->>DB: Look up doctor_id by appointment ID and patient ID
+
+        alt Appointment missing or not owned
+            DB-->>Repo: No matching appointment
+            Repo-->>Action: DomainException
+
+        else Appointment found
+            DB-->>Repo: doctor_id
+
+            Repo->>DB: Begin transaction
+            Repo->>DB: Lock doctor row FOR UPDATE
+            Repo->>DB: Lock appointment row FOR UPDATE
+
+            DB-->>Repo: Current status, date and start time
+
+            Repo->>Repo: Check confirmed status and Asia/Kabul 2-hour cutoff
+
+            alt Cancellation not permitted
+                Repo->>DB: Roll back transaction
+                Repo-->>Action: DomainException
+
+            else Cancellation permitted
+                Repo->>DB: UPDATE appointments SET status = cancelled
+
+                alt Update fails
+                    Repo->>DB: Roll back transaction
+                    Repo-->>Action: Error
+
+                else Update succeeds
+                    Repo->>DB: Commit transaction
+                    Repo-->>Action: true
+                end
+            end
+        end
+
+        alt Cancellation succeeded
+            Action-->>Page: Redirect with success message
+
+        else Cancellation failed
+            Action-->>Page: Redirect with error message
+        end
+    end
+
+    Page-->>Patient: Display cancellation result

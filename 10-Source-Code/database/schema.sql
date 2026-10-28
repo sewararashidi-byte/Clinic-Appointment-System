@@ -94,7 +94,11 @@ CREATE TABLE IF NOT EXISTS doctor_availability (
 );
 
 
+
+-- =====================================================
 -- Sprint 2 - US-07: Appointment Booking
+-- Sprint 4 - US-09 and US-10: Cancellation/Rescheduling
+-- =====================================================
 
 CREATE TABLE IF NOT EXISTS appointments (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -109,6 +113,16 @@ CREATE TABLE IF NOT EXISTS appointments (
 
     status ENUM('confirmed', 'cancelled')
         NOT NULL DEFAULT 'confirmed',
+
+    -- Only confirmed appointments occupy a unique slot.
+    -- Cancelled appointments remain in history.
+    confirmed_slot TINYINT
+        GENERATED ALWAYS AS (
+            CASE
+                WHEN status = 'confirmed' THEN 1
+                ELSE NULL
+            END
+        ) PERSISTENT,
 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
@@ -128,5 +142,55 @@ CREATE TABLE IF NOT EXISTS appointments (
         ON DELETE RESTRICT,
 
     CONSTRAINT uq_doctor_appointment_slot
-        UNIQUE (doctor_id, appointment_date, start_time)
+        UNIQUE (
+            doctor_id,
+            appointment_date,
+            start_time,
+            confirmed_slot
+        )
 );
+
+-- Sprint 4 - US-13
+-- Appointment Email Reminder Tracking
+
+CREATE TABLE IF NOT EXISTS appointment_reminders (
+
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+
+    appointment_id INT UNSIGNED NOT NULL,
+
+    appointment_date DATE NOT NULL,
+
+    start_time TIME NOT NULL,
+
+    status ENUM(
+        'processing',
+        'sent',
+        'failed'
+    ) NOT NULL DEFAULT 'processing',
+
+    attempt_count INT UNSIGNED
+        NOT NULL DEFAULT 0,
+
+    last_attempt_at DATETIME NULL,
+
+    sent_at DATETIME NULL,
+
+    last_error VARCHAR(255) NULL,
+
+    created_at TIMESTAMP
+        DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_reminder_appointment
+        FOREIGN KEY (appointment_id)
+        REFERENCES appointments(id)
+        ON DELETE RESTRICT,
+
+    CONSTRAINT uq_appointment_reminder_slot
+        UNIQUE (
+            appointment_id,
+            appointment_date,
+            start_time
+        )
+
+) ENGINE=InnoDB;

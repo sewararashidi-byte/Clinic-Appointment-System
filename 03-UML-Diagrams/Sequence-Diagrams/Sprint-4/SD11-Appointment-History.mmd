@@ -1,0 +1,59 @@
+
+sequenceDiagram
+    autonumber
+
+    actor Patient
+    participant Page as Patient Appointments Page
+    participant Loader as patient_appointments_data.php
+    participant Repo as appointment_repository.php
+    participant DB as MariaDB
+
+    Patient->>Page: Open My Appointments
+
+    Page->>Loader: Load patient appointment data
+
+    Loader->>Loader: Verify authenticated patient role
+
+    alt Authentication or role invalid
+        Loader-->>Page: Deny access or redirect
+
+    else Authenticated patient
+        Loader->>Loader: Get patient ID from session
+        Loader->>DB: Open database connection
+
+        alt Invalid patient ID
+            Loader-->>Page: Prepare error message
+
+        else Valid patient ID
+            Loader->>Repo: getPatientAppointments(conn, patientId)
+
+            Repo->>DB: SELECT appointments JOIN users WHERE patient_id = ?
+
+            alt Database query fails
+                DB-->>Repo: Database error
+                Repo-->>Loader: Throw exception
+                Loader->>Loader: Log technical error
+                Loader-->>Page: Provide safe error message
+
+            else Query succeeds
+                DB-->>Repo: Matching appointment records
+                Repo-->>Loader: Appointment array
+
+                Loader->>DB: Close database connection
+                Loader-->>Page: Provide patientAppointments
+
+                alt No appointments found
+                    Page-->>Patient: Show empty history message
+
+                else Appointments found
+                    Page->>Page: Compare appointment date and time
+                    Page->>Page: Use Asia/Kabul timezone
+                    Page->>Page: Identify upcoming and previous appointments
+                    Page->>Page: Preserve cancelled status
+                    Page->>Page: Escape displayed appointment details
+
+                    Page-->>Patient: Display appointment history
+                end
+            end
+        end
+    end
