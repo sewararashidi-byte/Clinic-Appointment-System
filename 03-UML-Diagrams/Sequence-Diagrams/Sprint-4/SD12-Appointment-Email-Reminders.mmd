@@ -1,0 +1,92 @@
+
+sequenceDiagram
+    autonumber
+
+    participant Scheduler as Windows Task Scheduler
+    participant Launcher as PowerShell Launcher
+    participant Runner as Reminder PHP Runner
+    participant Repo as Reminder Repository
+    participant Processor as Reminder Processor
+    participant DB as MariaDB
+    participant Mailer as PHPMailer
+    participant SMTP as SMTP Server
+
+    Scheduler->>Launcher: Start scheduled reminder task
+
+    Launcher->>Launcher: Load protected SMTP configuration
+
+    Launcher->>Runner: Run PHP reminder script
+
+    Runner->>DB: Open database connection
+
+    alt Check mode
+        Runner->>Repo: getAppointmentReminderCandidates()
+        Repo->>DB: SELECT confirmed appointments in reminder window
+        DB-->>Repo: Eligible appointment records
+        Repo-->>Runner: Candidate array
+        Runner-->>Scheduler: Return candidate count without sending
+
+    else Send mode
+        Runner->>Runner: Verify required SMTP settings
+
+        alt SMTP configuration missing
+            Runner-->>Scheduler: Exit with error
+
+        else SMTP configuration valid
+            Runner->>Processor: processAppointmentReminders(conn)
+
+            Processor->>Repo: getAppointmentReminderCandidates()
+            Repo->>DB: SELECT confirmed appointments due for reminders
+            DB-->>Repo: Eligible appointments
+            Repo-->>Processor: Candidate array
+
+            loop For each reminder candidate
+                Processor->>DB: Begin transaction
+                Processor->>DB: Lock doctor row FOR UPDATE
+                Processor->>DB: Lock appointment row FOR UPDATE
+                DB-->>Processor: Current appointment information
+
+                Processor->>Processor: Check confirmed status
+                Processor->>Processor: Check unchanged date and time
+                Processor->>Processor: Check 24-hour reminder window
+
+                alt Cancelled, rescheduled or outside window
+                    Processor->>DB: Roll back transaction
+                    Note over Processor: Skip outdated or ineligible candidate
+
+                else Appointment remains eligible
+                    Processor->>DB: Lock reminder tracking record
+                    DB-->>Processor: Existing record or no record
+
+                    alt Already sent, processing or retry limit reached
+                        Processor->>DB: Roll back transaction
+                        Note over Processor: Skip duplicate or exhausted attempt
+
+                    else Reminder may be attempted
+                        Processor->>DB: INSERT or UPDATE reminder as processing
+
+                        Processor->>Mailer: sendAppointmentReminderEmail()
+                        Mailer->>Mailer: Build reminder content
+                        Mailer->>SMTP: Submit email using authenticated SMTP
+
+                        alt SMTP submission succeeds
+                            SMTP-->>Mailer: Accepted
+                            Mailer-->>Processor: Delivery call successful
+                            Processor->>DB: UPDATE reminder status to sent
+                            Processor->>DB: Record sent_at
+                            Processor->>DB: Commit transaction
+
+                        else SMTP submission fails
+                            SMTP-->>Mailer: Error
+                            Mailer-->>Processor: Throw email exception
+                            Processor->>DB: UPDATE reminder status to failed
+                            Processor->>DB: Commit failed attempt
+                        end
+                    end
+                end
+            end
+
+            Processor-->>Runner: Sent, failed and skipped counts
+            Runner-->>Scheduler: Exit with process result
+        end
+    end

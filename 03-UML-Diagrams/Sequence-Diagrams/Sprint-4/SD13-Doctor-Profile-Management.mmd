@@ -1,0 +1,110 @@
+
+sequenceDiagram
+    autonumber
+
+    actor Doctor
+    participant Page as Doctor Profile Page
+    participant Loader as doctor_profile_data.php
+    participant Action as doctor_profile_update.php
+    participant Repo as doctor_profile_repository.php
+    participant DB as MariaDB
+
+    Doctor->>Page: Open My Professional Profile
+
+    Page->>Loader: Load doctor profile data
+
+    Loader->>Loader: Verify authenticated doctor role
+
+    alt Authentication or role invalid
+        Loader-->>Page: Deny access or redirect
+
+    else Authenticated doctor
+        Loader->>Loader: Retrieve doctor ID from session
+        Loader->>Loader: Generate or retrieve CSRF token
+
+        Loader->>Repo: getDoctorProfessionalProfile(conn, doctorId)
+
+        Repo->>DB: SELECT users LEFT JOIN doctor_profiles
+        DB-->>Repo: Doctor profile or no matching account
+
+        alt Doctor account not found
+            Repo-->>Loader: null
+            Loader-->>Page: Profile not found message
+            Page-->>Doctor: Display safe error message
+
+        else Doctor account found
+            Repo-->>Loader: Professional profile data
+            Loader-->>Page: Profile data and CSRF token
+            Page-->>Doctor: Display professional profile
+
+            Doctor->>Page: Edit permitted profile fields
+            Doctor->>Page: Submit updated information
+
+            Page->>Action: POST profile fields and CSRF token
+
+            Action->>Action: Verify doctor session and role
+            Action->>Action: Validate POST method and CSRF
+
+            alt Invalid request or CSRF
+                Action-->>Page: Redirect with error message
+
+            else Valid request
+                Action->>Action: Validate required fields
+                Action->>Action: Validate lengths and experience
+
+                alt Invalid profile information
+                    Action-->>Page: Redirect with validation error
+
+                else Valid profile information
+                    Action->>Repo: saveDoctorProfessionalProfile()
+
+                    Repo->>DB: Begin transaction
+                    Repo->>DB: Lock doctor account FOR UPDATE
+                    DB-->>Repo: Doctor account or not found
+
+                    alt Doctor account not found
+                        Repo->>DB: Roll back transaction
+                        Repo-->>Action: DomainException
+
+                    else Doctor account exists
+                        Repo->>DB: Check doctor_profiles record FOR UPDATE
+                        DB-->>Repo: Existing record or no record
+
+                        Repo->>DB: UPDATE users full_name and phone
+
+                        alt Professional profile exists
+                            Repo->>DB: UPDATE doctor_profiles details
+
+                        else Professional profile missing
+                            Repo->>DB: INSERT doctor_profiles record
+                        end
+
+                        alt Database operation fails
+                            Repo->>DB: Roll back transaction
+                            Repo-->>Action: Error
+
+                        else Database operations succeed
+                            Repo->>DB: Commit transaction
+                            Repo-->>Action: true
+                        end
+                    end
+
+                    alt Profile updated successfully
+                        Action->>Action: Update session full_name
+                        Action-->>Page: Redirect with success message
+
+                    else Profile update failed
+                        Action-->>Page: Redirect with error message
+                    end
+                end
+            end
+
+            Page->>Loader: Reload doctor profile
+            Loader->>Repo: getDoctorProfessionalProfile()
+            Repo->>DB: Retrieve current profile
+            DB-->>Repo: Current professional information
+            Repo-->>Loader: Profile data
+            Loader-->>Page: Current profile
+            Page-->>Doctor: Display updated profile or error
+        end
+    end
