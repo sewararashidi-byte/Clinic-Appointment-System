@@ -85,28 +85,35 @@ $fullName = $_SESSION['full_name'] ?? 'Doctor';
 
         <div class="d-flex gap-2 flex-wrap">
 
-            <a
-                href="../doctor/availability.php"
-                class="btn btn-primary"
-            >
-                Manage Availability
-            </a>
+    <a
+        href="../doctor/availability.php"
+        class="btn btn-primary"
+    >
+        Manage Availability
+    </a>
 
-            <a
-                href="../logout.php"
-                class="btn btn-danger"
-            >
-                Logout
-            </a>
-<a
-    href="../doctor/appointments.php"
-    class="btn btn-outline-primary"
->
-    My Appointments
-</a>
-        </div>
+    <a
+        href="../doctor/profile.php"
+        class="btn btn-outline-primary"
+    >
+        My Profile
+    </a>
 
-    </div>
+    <a
+        href="../doctor/appointments.php"
+        class="btn btn-outline-primary"
+    >
+        My Appointments
+    </a>
+
+    <a
+        href="../logout.php"
+        class="btn btn-danger"
+    >
+        Logout
+    </a>
+
+</div>
 
 </div>
 
