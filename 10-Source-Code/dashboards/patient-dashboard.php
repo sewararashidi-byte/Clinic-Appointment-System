@@ -85,6 +85,12 @@ $fullName = $_SESSION['full_name'] ?? 'Patient';
 >
     My Profile
 </a>
+<a
+    href="../patient/appointments.php"
+    class="btn btn-outline-primary"
+>
+    My Appointments
+</a>
             <a
                 href="../logout.php"
                 class="btn btn-danger"
