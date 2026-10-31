@@ -1,0 +1,104 @@
+
+sequenceDiagram
+    autonumber
+    actor Staff as Receptionist / Administrator
+    participant Page as Staff Cancellation Page
+    participant Auth as Authorization Guard
+    participant Action as Staff Cancellation Action
+    participant Repo as Staff Appointment Repository
+    participant DB as MySQL Database
+
+    Staff->>Page: Open appointment-cancel.php with appointment ID
+    Page->>Auth: requireRole(receptionist, administrator)
+
+    alt Unauthorized user
+        Auth-->>Staff: Access denied / redirect
+    else Authorized staff member
+        Page->>DB: SELECT appointment and patient/doctor details
+        DB-->>Page: Appointment record
+
+        alt Appointment not found
+            Page-->>Staff: Display 404 error
+        else Appointment found
+            Page->>Page: Check confirmed status and future date
+
+            alt Not eligible for cancellation
+                Page-->>Staff: Display cancellation unavailable
+            else Eligible appointment
+                Page->>Page: Check 24-hour deadline
+                Page->>Page: Generate session CSRF token
+                Page-->>Staff: Display cancellation form
+
+                opt Within final 24 hours
+                    Page-->>Staff: Show mandatory reason warning
+                end
+
+                Staff->>Action: POST appointment ID, reason and CSRF
+                Action->>Auth: requireRole(receptionist, administrator)
+                Action->>Action: Validate POST, ID, CSRF and reason type
+
+                alt Invalid request
+                    Action-->>Staff: Redirect with error message
+                else Valid request
+                    Action->>Repo: cancelStaffAppointment(ID, staff ID, reason)
+                    Repo->>DB: Verify active staff and permitted role
+                    DB-->>Repo: Staff authorization result
+
+                    alt Staff not authorized
+                        Repo-->>Action: Authorization error
+                        Action-->>Staff: Redirect with error
+                    else Staff authorized
+                        Repo->>DB: SELECT appointment doctor ID
+                        DB-->>Repo: Doctor ID or no record
+
+                        alt Appointment not found
+                            Repo-->>Action: Appointment not found
+                            Action-->>Staff: Redirect with error
+                        else Appointment found
+                            Repo->>DB: BEGIN TRANSACTION
+                            Repo->>DB: SELECT doctor FOR UPDATE
+                            DB-->>Repo: Doctor record
+                            Repo->>DB: SELECT appointment FOR UPDATE
+                            DB-->>Repo: Locked appointment
+
+                            Repo->>Repo: Verify confirmed status
+                            Repo->>Repo: Verify appointment is in future
+                            Repo->>Repo: Calculate 24-hour deadline
+
+                            alt Status invalid or appointment started
+                                Repo->>DB: ROLLBACK
+                                Repo-->>Action: Cancellation rejected
+                                Action-->>Staff: Redirect with error
+                            else Confirmed future appointment
+                                alt Within 24 hours and reason missing
+                                    Repo->>DB: ROLLBACK
+                                    Repo-->>Action: Reason required
+                                    Action-->>Staff: Redirect with error
+                                else Cancellation permitted
+                                    Repo->>DB: UPDATE appointment status to cancelled
+                                    DB-->>Repo: Update result
+
+                                    Repo->>DB: INSERT appointment_change_log
+                                    Note over Repo,DB: Record staff ID, reason and original date/time
+                                    DB-->>Repo: Audit insert result
+
+                                    alt Database operation fails
+                                        Repo->>DB: ROLLBACK
+                                        Repo-->>Action: Cancellation failed
+                                        Action-->>Staff: Redirect with error
+                                    else Both operations succeed
+                                        Repo->>DB: COMMIT
+                                        Repo-->>Action: Cancellation successful
+                                        Action-->>Staff: Redirect with success message
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    Note over Repo,DB: Cancelled appointment remains in history
+    Note over Repo,DB: The previously reserved slot becomes available

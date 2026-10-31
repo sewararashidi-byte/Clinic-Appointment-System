@@ -1,0 +1,86 @@
+
+sequenceDiagram
+    autonumber
+    actor Staff as Receptionist / Administrator
+    participant Page as Staff Booking Page
+    participant Auth as Authorization Guard
+    participant Action as Staff Booking Action
+    participant Booking as Staff Booking Repository
+    participant Slots as Availability Repositories
+    participant DB as MySQL Database
+
+    Staff->>Page: Open appointment-book.php
+    Page->>Auth: requireRole(receptionist, administrator)
+
+    alt Unauthorized user
+        Auth-->>Staff: Deny access / redirect
+    else Authorized staff member
+        Page->>DB: SELECT active patients and doctors
+        DB-->>Page: Patient and doctor lists
+        Page-->>Staff: Display doctor selection
+
+        Staff->>Page: Select doctor (GET doctor_id)
+        Page->>Slots: getDoctorAvailability(doctorId)
+        Slots->>DB: SELECT doctor availability
+        DB-->>Slots: Availability records
+        Slots-->>Page: Doctor availability
+
+        Page->>Slots: getAvailableAppointmentSlots(...)
+        Slots->>DB: SELECT confirmed doctor appointments
+        DB-->>Slots: Occupied time ranges
+        Slots-->>Page: Available future slots
+
+        Page->>Page: Generate session CSRF token
+        Page-->>Staff: Display patient and slot selectors
+
+        Staff->>Action: POST patient, doctor, slot and CSRF
+        Action->>Auth: requireRole(receptionist, administrator)
+        Action->>Action: Validate POST, CSRF, inputs and IDs
+
+        alt Unauthorized or invalid request
+            Action-->>Staff: Redirect with error
+        else Valid request
+            Action->>Booking: bookStaffAppointmentForPatient(...)
+            Booking->>DB: BEGIN TRANSACTION
+            Booking->>DB: Verify active staff and patient
+            DB-->>Booking: Verification results
+
+            alt Invalid staff or patient
+                Booking->>DB: ROLLBACK
+                Booking-->>Action: DomainException
+                Action-->>Staff: Redirect with error
+            else Valid staff and patient
+                Booking->>DB: SELECT active doctor FOR UPDATE
+                DB-->>Booking: Doctor record / no record
+
+                alt Doctor not available
+                    Booking->>DB: ROLLBACK
+                    Booking-->>Action: DomainException
+                    Action-->>Staff: Redirect with error
+                else Doctor available
+                    Booking->>Slots: Recheck current availability
+                    Slots->>DB: Read availability and bookings
+                    DB-->>Slots: Current records
+                    Slots-->>Booking: Server-validated available slots
+                    Booking->>Booking: Match selected slot
+
+                    alt Slot invalid or already booked
+                        Booking->>DB: ROLLBACK
+                        Booking-->>Action: DomainException
+                        Action-->>Staff: Redirect with error
+                    else Slot available
+                        Booking->>DB: INSERT confirmed appointment
+                        DB-->>Booking: New appointment ID
+                        Booking->>DB: INSERT booking audit log
+                        DB-->>Booking: Audit insert result
+                        Booking->>DB: COMMIT
+                        Booking-->>Action: Appointment ID
+                        Action-->>Staff: Redirect with success
+                    end
+                end
+            end
+        end
+    end
+
+    Note over Booking,DB: Database failures roll back the transaction
+    Note over Booking,DB: Duplicate confirmed slots are prevented

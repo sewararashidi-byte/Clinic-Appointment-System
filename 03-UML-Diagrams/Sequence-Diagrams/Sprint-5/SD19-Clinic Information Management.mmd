@@ -1,0 +1,79 @@
+
+sequenceDiagram
+    autonumber
+    actor Staff as Receptionist / Administrator
+    participant Page as Clinic Management Page
+    participant Auth as Authorization Guard
+    participant Action as Clinic Update Action
+    participant Repo as Clinic Information Repository
+    participant DB as MySQL Database
+
+    Staff->>Page: Open staff/clinic.php
+    Page->>Auth: requireRole(receptionist, administrator)
+
+    alt Unauthorized role
+        Auth-->>Staff: Deny access / redirect
+    else Authorized role
+        Page->>Repo: getClinicInformation(conn)
+        Repo->>DB: SELECT clinic_information WHERE id = 1
+        DB-->>Repo: Clinic record or no record
+        Repo-->>Page: Clinic details or null
+        Page->>Page: Generate or reuse session CSRF token
+
+        alt Clinic information exists
+            Page-->>Staff: Display prefilled clinic form
+        else No clinic information saved
+            Page-->>Staff: Display empty form and notice
+        end
+
+        Staff->>Action: POST four required fields and CSRF token
+        Action->>Auth: requireRole(receptionist, administrator)
+
+        alt Unauthorized role
+            Auth-->>Staff: Deny access / redirect
+        else Authorized role
+            Action->>Action: Validate POST method, CSRF and input types
+
+            alt Invalid request or CSRF token
+                Action-->>Staff: Redirect with error message
+            else Request valid
+                Action->>Repo: saveClinicInformation(conn, staff ID, fields)
+                Repo->>Repo: Trim and validate four required fields
+
+                alt Invalid clinic details
+                    Repo-->>Action: DomainException
+                    Action-->>Staff: Redirect with validation error
+                else Clinic details valid
+                    Repo->>DB: SELECT active receptionist or administrator
+                    DB-->>Repo: Staff record or no record
+
+                    alt Staff account not authorized or inactive
+                        Repo-->>Action: DomainException
+                        Action-->>Staff: Redirect with authorization error
+                    else Active authorized staff
+                        Repo->>DB: INSERT id=1 or UPDATE clinic_information
+                        Note over Repo,DB: Save name, address, phone, hours and updated_by
+
+                        alt Database operation fails
+                            DB-->>Repo: Database error
+                            Repo-->>Action: Exception
+                            Action-->>Staff: Redirect with generic error
+                        else Save succeeds
+                            DB-->>Repo: Save confirmed
+                            Repo-->>Action: true
+                            Action-->>Staff: Redirect with success message
+                            Staff->>Page: Reload staff/clinic.php
+                            Page->>Repo: getClinicInformation(conn)
+                            Repo->>DB: SELECT saved clinic information
+                            DB-->>Repo: Saved clinic record
+                            Repo-->>Page: Current clinic details
+                            Page-->>Staff: Show saved values
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    Note over Page,DB: Current form saves four required fields only
+    Note over Repo,DB: Single clinic record with id = 1

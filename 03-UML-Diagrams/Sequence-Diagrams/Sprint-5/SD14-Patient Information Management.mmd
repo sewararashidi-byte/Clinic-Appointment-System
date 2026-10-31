@@ -1,0 +1,35 @@
+
+sequenceDiagram
+    autonumber
+    actor Staff as Receptionist / Administrator
+    participant UI as Patient Edit Page
+    participant Auth as Authentication
+    participant Action as Patient Update Action
+    participant Repo as Patient Repository
+    participant DB as MySQL Database
+
+    Staff->>UI: Open patient record
+    UI->>Auth: Verify staff role
+    alt Unauthorized
+        Auth-->>Staff: Access denied
+    else Authorized
+        UI->>Repo: Retrieve patient details
+        Repo->>DB: SELECT approved patient fields
+        DB-->>Repo: Patient information
+        Repo-->>UI: Return patient details
+        UI-->>Staff: Display editing form
+        Staff->>Action: Submit changes and CSRF token
+        Action->>Auth: Verify staff role
+        Action->>Action: Validate CSRF and inputs
+        Action->>Repo: Update approved fields
+        alt Invalid information
+            Repo-->>Action: Validation error
+            Action-->>Staff: Display error
+        else Valid information
+            Repo->>DB: Prepared UPDATE users
+            DB-->>Repo: Update result
+            Repo-->>Action: Success
+            Action-->>Staff: Redirect with success message
+        end
+    end
+    Note over Repo,DB: Sensitive medical data is not modified

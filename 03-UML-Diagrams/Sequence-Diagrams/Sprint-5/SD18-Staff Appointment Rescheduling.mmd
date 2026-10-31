@@ -1,0 +1,109 @@
+
+sequenceDiagram
+    autonumber
+    actor Staff as Receptionist / Administrator
+    participant Page as Staff Rescheduling Page
+    participant Auth as Authorization Guard
+    participant Action as Staff Rescheduling Action
+    participant Repo as Appointment Repository
+    participant Slots as Availability Functions
+    participant DB as MySQL Database
+
+    Staff->>Page: Open appointment-reschedule.php with appointment ID
+    Page->>Auth: requireRole(receptionist, administrator)
+
+    alt Unauthorized user
+        Auth-->>Staff: Deny access / redirect
+    else Authorized staff member
+        Page->>DB: SELECT appointment with patient and doctor
+        DB-->>Page: Appointment details or no record
+
+        alt Appointment missing
+            Page-->>Staff: Display 404 error
+        else Appointment found
+            Page->>Page: Check confirmed status and 2-hour deadline
+
+            alt Appointment not eligible
+                Page-->>Staff: Display rescheduling unavailable
+            else Appointment eligible
+                Page->>Slots: getDoctorAvailability(doctorId)
+                Slots->>DB: SELECT doctor availability
+                DB-->>Slots: Availability records
+                Slots-->>Page: Doctor availability
+                Page->>Slots: getAvailableAppointmentSlots(...)
+                Slots->>DB: SELECT confirmed booked times
+                DB-->>Slots: Occupied times
+                Slots-->>Page: Available future slots
+                Page->>Page: Generate CSRF token
+
+                alt No alternative slots
+                    Page-->>Staff: Display no available slots
+                else Alternative slots available
+                    Page-->>Staff: Display new-slot selection form
+
+                    Staff->>Action: POST appointment ID, slot data and CSRF
+                    Action->>Auth: requireRole(receptionist, administrator)
+                    Action->>Action: Check POST, CSRF and input types
+
+                    alt Request invalid or unauthorized
+                        Action-->>Staff: Redirect with error
+                    else Valid staff request
+                        Action->>DB: SELECT patient_id for appointment
+                        DB-->>Action: Patient ID or no record
+
+                        alt Appointment not found
+                            Action-->>Staff: Redirect with error
+                        else Appointment found
+                            Action->>Repo: reschedulePatientAppointment(..., staffActorId)
+                            Repo->>DB: Verify active staff role
+                            DB-->>Repo: Authorization result
+
+                            alt Staff authorization fails
+                                Repo-->>Action: Authorization error
+                                Action-->>Staff: Redirect with error
+                            else Staff authorized
+                                Repo->>DB: SELECT original doctor ID
+                                DB-->>Repo: Doctor ID
+                                Repo->>DB: BEGIN TRANSACTION
+                                Repo->>DB: SELECT doctor FOR UPDATE
+                                DB-->>Repo: Doctor record
+                                Repo->>DB: SELECT appointment FOR UPDATE
+                                DB-->>Repo: Locked appointment
+                                Repo->>Repo: Check status, deadline and different time
+                                Repo->>Slots: Recheck slots for same doctor
+                                Slots->>DB: SELECT availability and bookings
+                                DB-->>Slots: Current records
+                                Slots-->>Repo: Server-validated slots
+                                Repo->>Repo: Match selected slot
+
+                                alt Doctor, appointment or slot invalid
+                                    Repo->>DB: ROLLBACK
+                                    Repo-->>Action: Rescheduling rejected
+                                    Action-->>Staff: Redirect with error
+                                else Valid alternative slot
+                                    Repo->>DB: UPDATE appointment date and time
+                                    DB-->>Repo: Update result
+                                    Repo->>DB: INSERT appointment_change_log
+                                    Note over Repo,DB: Log staff ID, original and new times
+                                    DB-->>Repo: Audit insert result
+
+                                    alt Update or audit insert fails
+                                        Repo->>DB: ROLLBACK
+                                        Repo-->>Action: Rescheduling failed
+                                        Action-->>Staff: Redirect with error
+                                    else Both operations succeed
+                                        Repo->>DB: COMMIT
+                                        Repo-->>Action: Success
+                                        Action-->>Staff: Redirect with success message
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    Note over Repo,DB: Original appointment remains unchanged on rollback
+    Note over Repo,DB: Same doctor and no double booking

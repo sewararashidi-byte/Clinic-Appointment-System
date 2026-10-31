@@ -1,0 +1,79 @@
+
+sequenceDiagram
+    autonumber
+    actor Staff as Receptionist / Administrator
+    participant Page as Doctor Edit Page
+    participant Auth as Authorization Guard
+    participant Action as Doctor Update Action
+    participant Repo as Doctor Repository
+    participant DB as MySQL Database
+
+    Staff->>Page: Open doctor-edit.php with doctor ID
+    Page->>Auth: requireRole(receptionist, administrator)
+
+    alt Unauthorized user
+        Auth-->>Staff: Deny access / redirect
+    else Authorized staff member
+        Page->>Repo: getStaffDoctorById(doctorId)
+        Repo->>DB: SELECT doctor and doctor_profiles
+        DB-->>Repo: Doctor record or no record
+        Repo-->>Page: Doctor details
+
+        alt Doctor not found
+            Page-->>Staff: Display 404 error
+        else Doctor found
+            Page->>Page: Generate CSRF token
+            Page-->>Staff: Display doctor editing form
+            Note over Staff,Page: Name and specialty are read-only
+            Note over Staff,Page: Phone, email and room are editable
+
+            Staff->>Action: Submit POST fields and CSRF token
+            Action->>Auth: requireRole(receptionist, administrator)
+
+            alt Unauthorized user
+                Auth-->>Staff: Deny access / redirect
+            else Authorized staff member
+                Action->>Action: Validate POST, doctor ID, CSRF and input types
+
+                alt Invalid request
+                    Action-->>Staff: Redirect with error message
+                else Valid request
+                    Action->>Repo: getStaffDoctorById(doctorId)
+                    Repo->>DB: SELECT doctor by ID and role
+                    DB-->>Repo: Doctor record or no record
+                    Repo-->>Action: Doctor lookup result
+
+                    alt Doctor not found
+                        Action-->>Staff: Redirect with error message
+                    else Doctor exists
+                        Action->>DB: BEGIN TRANSACTION
+                        Action->>Repo: updateStaffDoctorContact(phone, email)
+                        Repo->>Repo: Validate contact data
+                        Repo->>DB: UPDATE users phone and email
+                        DB-->>Repo: Update result
+                        Repo-->>Action: Contact update result
+
+                        opt Consultation room included in request
+                            Action->>Repo: updateStaffDoctorConsultationRoom(room)
+                            Repo->>Repo: Validate optional room
+                            Repo->>DB: Check doctor_profiles record
+                            DB-->>Repo: Profile result
+                            Repo->>DB: UPDATE doctor_profiles consultation_room
+                            DB-->>Repo: Update result
+                            Repo-->>Action: Room update result
+                        end
+
+                        alt All updates succeed
+                            Action->>DB: COMMIT
+                            Action-->>Staff: Redirect with success or no-change message
+                        else Validation or database error
+                            Action->>DB: ROLLBACK
+                            Action-->>Staff: Redirect with error message
+                        end
+
+                        Note over Repo,DB: Specialty, qualifications, experience and medical data are unchanged
+                    end
+                end
+            end
+        end
+    end
