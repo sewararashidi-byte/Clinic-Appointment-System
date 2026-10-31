@@ -318,7 +318,7 @@ function getPatientAppointments(
  *
  * Rules:
  * - Only a confirmed appointment can be cancelled.
- * - Cancellation must occur at least 2 hours before
+ * - Cancellation must occur at least 24 hours before
  *   the scheduled appointment.
  * - Keep the appointment record for patient history.
  * - Use the same doctor lock as appointment booking.
@@ -426,7 +426,7 @@ function cancelPatientAppointment(
             );
         }
 
-        // Apply Husna's approved two-hour cancellation rule.
+        // Apply Husna's approved 24-hour cancellation rule.
         // This uses the application's configured PHP timezone.
         $appointmentStart = new DateTimeImmutable(
             $appointment['appointment_date'] . ' ' .
@@ -434,7 +434,7 @@ function cancelPatientAppointment(
         );
 
         $cancellationDeadline = $appointmentStart
-            ->modify('-2 hours');
+            ->modify('-24 hours');
 
         $now = new DateTimeImmutable('now');
 
@@ -503,13 +503,15 @@ function cancelPatientAppointment(
  * Requires getDoctorAvailability() from doctor_repository.php
  * to be loaded by the calling action.
  */
+
 function reschedulePatientAppointment(
     mysqli $conn,
     int $appointmentId,
     int $patientId,
     int $availabilityId,
     string $newDate,
-    string $newStartTime
+    string $newStartTime,
+    ?int $staffActorId = null
 ): bool {
 
     if (
@@ -522,6 +524,48 @@ function reschedulePatientAppointment(
         throw new DomainException(
             'Invalid rescheduling request.'
         );
+    }
+
+    // Sprint 5 — US-19
+    // Verify authorization when staff reschedule
+    // an appointment on behalf of a patient.
+    if ($staffActorId !== null) {
+
+        if ($staffActorId <= 0) {
+            throw new DomainException(
+                'Invalid staff account.'
+            );
+        }
+
+        $staffSql = "
+            SELECT id
+            FROM users
+            WHERE id = ?
+              AND role IN ('receptionist', 'administrator')
+              AND account_status = 'active'
+            LIMIT 1
+        ";
+
+        $staffStmt = $conn->prepare($staffSql);
+
+        $staffStmt->bind_param(
+            'i',
+            $staffActorId
+        );
+
+        $staffStmt->execute();
+
+        $authorizedStaff = $staffStmt
+            ->get_result()
+            ->fetch_assoc();
+
+        $staffStmt->close();
+
+        if (!$authorizedStaff) {
+            throw new DomainException(
+                'You are not authorized to reschedule appointments.'
+            );
+        }
     }
 
     // Identify the appointment's original doctor.
@@ -732,6 +776,48 @@ function reschedulePatientAppointment(
             throw new RuntimeException(
                 'Unable to update the appointment.'
             );
+        }
+
+        // Sprint 5 — US-19: Record staff rescheduling.
+        // Patient rescheduling continues to use the
+        // existing workflow without a staff actor.
+        if ($staffActorId !== null) {
+
+            $logSql = "
+                INSERT INTO appointment_change_log (
+                    appointment_id,
+                    actor_user_id,
+                    action_type,
+                    old_appointment_date,
+                    old_start_time,
+                    new_appointment_date,
+                    new_start_time
+                )
+                VALUES (?, ?, 'reschedule', ?, ?, ?, ?)
+            ";
+
+            $oldDate = $appointment['appointment_date'];
+            $oldStartTime = $appointment['start_time'];
+
+            $logStmt = $conn->prepare($logSql);
+
+            $logStmt->bind_param(
+                'iissss',
+                $appointmentId,
+                $staffActorId,
+                $oldDate,
+                $oldStartTime,
+                $newDate,
+                $newStartTime
+            );
+
+            if (!$logStmt->execute()) {
+                throw new RuntimeException(
+                    'Unable to record the rescheduling change.'
+                );
+            }
+
+            $logStmt->close();
         }
 
         $conn->commit();
