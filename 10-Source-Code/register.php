@@ -22,10 +22,12 @@ unset($_SESSION['registration_success']);
         rel="stylesheet"
     >
 
-    <link rel="stylesheet" href="assets/css/style.css">
+ 
+   <link rel="stylesheet" href="assets/css/style.css">
+   <link rel="stylesheet" href="assets/css/register-premium.css">
 </head>
 
-<body>
+<body class="registration-page">
 
 <div class="container py-5">
 
