@@ -1,5 +1,14 @@
 # Sprint 1 Database Plan
 
+> **Status: Sprint 1 Planning Document**
+>
+> This document describes the original database plan developed
+> during Sprint 1. Additional tables and fields were introduced
+> during subsequent sprints to support the approved user stories.
+>
+> The implemented database structure is documented through
+> schema.sql, the database migration files, and the source code.
+
 ## Project
 Clinic Appointment System
 

@@ -1,4 +1,13 @@
 # Sprint 1 UI/UX Plan
+> **Status: Sprint 1 Planning Document**
+>
+> This document describes the initial UI/UX plan developed during
+> Sprint 1. The interface was progressively expanded and refined
+> throughout Sprints 2–5.
+>
+> The final implemented interface is represented by the PHP pages,
+> dashboards, and CSS files in the source-code repository.
+
 
 ## Purpose
 
@@ -74,3 +83,5 @@ The dashboards will be expanded in later sprints when their related features are
 JavaScript will be used where appropriate for client-side form validation.
 
 Backend validation will also be required in PHP.
+
+
