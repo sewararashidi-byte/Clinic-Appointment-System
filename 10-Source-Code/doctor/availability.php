@@ -13,6 +13,14 @@ require_once __DIR__ . '/../config/auth.php';
 
 requireRole(['doctor']);
 
+// A single session-bound token protects all availability changes.
+if (
+    !isset($_SESSION['availability_csrf_token']) ||
+    !is_string($_SESSION['availability_csrf_token'])
+) {
+    $_SESSION['availability_csrf_token'] = bin2hex(random_bytes(32));
+}
+
 require_once __DIR__ . '/../config/timezone.php';
 require_once __DIR__ . '/../config/database.php';
 
@@ -1962,6 +1970,12 @@ $today = $now->format('l, F j, Y');
                             class="availability-form"
                         >
 
+                            <input
+                                type="hidden"
+                                name="csrf_token"
+                                value="<?= availabilityEscape($_SESSION['availability_csrf_token']) ?>"
+                            >
+
                             <div class="field-grid">
 
                                 <div class="field full">
@@ -2462,6 +2476,12 @@ $today = $now->format('l, F j, Y');
 
                                                     <input
                                                         type="hidden"
+                                                        name="csrf_token"
+                                                        value="<?= availabilityEscape($_SESSION['availability_csrf_token']) ?>"
+                                                    >
+
+                                                    <input
+                                                        type="hidden"
                                                         name="availability_id"
                                                         value="<?= $availabilityId ?>"
                                                     >
@@ -2570,6 +2590,12 @@ $today = $now->format('l, F j, Y');
                                                     action="../actions/availability_delete.php"
                                                     onsubmit="return confirm('Are you sure you want to delete this availability period?');"
                                                 >
+
+                                                    <input
+                                                        type="hidden"
+                                                        name="csrf_token"
+                                                        value="<?= availabilityEscape($_SESSION['availability_csrf_token']) ?>"
+                                                    >
 
                                                     <input
                                                         type="hidden"

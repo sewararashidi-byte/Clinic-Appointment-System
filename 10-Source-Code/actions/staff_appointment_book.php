@@ -102,7 +102,7 @@ try {
     // - Selected appointment slot
     // - Double-booking prevention
     // - Atomic booking and audit logging
-
+                            
     $appointmentId = bookStaffAppointmentForPatient(
         $conn,
         $staffUserId,

@@ -1,203 +1,199 @@
 <?php
+/**
+ * Create doctor availability.
+ * Doctor-only, CSRF-protected, 30-minute appointment intervals.
+ */
 
-require_once '../config/auth.php';
-require_once '../config/database.php';
+require_once __DIR__ . '/../config/auth.php';
+require_once __DIR__ . '/../config/database.php';
 
 requireRole(['doctor']);
 
-/*
- * This action only accepts form submissions
- * using the POST method.
- */
+function availabilityCreateResponse(string $type, string $message): void
+{
+    $_SESSION[$type] = $message;
+    header('Location: ../doctor/availability.php');
+    exit;
+}
+
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
     exit('Method Not Allowed');
 }
 
-/*
- * Get the logged-in doctor's ID
- * from the session.
- */
-$doctorId = (int) $_SESSION['user_id'];
-
-/*
- * Get availability information
- * submitted by the doctor.
- */
-$availabilityDate = trim($_POST['availability_date'] ?? '');
-$startTime = trim($_POST['start_time'] ?? '');
-$endTime = trim($_POST['end_time'] ?? '');
-
-/*
- * Sprint 2 default appointment duration
- * confirmed by the Product Owner.
- */
-$slotDuration = 30;
-
-/*
- * Validate required availability fields.
- */
-if (
-    empty($availabilityDate) ||
-    empty($startTime) ||
-    empty($endTime)
-) {
-    $_SESSION['availability_error'] =
-        'Please enter the availability date, start time, and end time.';
-
-    header('Location: ../dashboards/doctor-dashboard.php');
-    exit;
-}
-
-/*
- * Validate the date format.
- */
-$dateObject = DateTime::createFromFormat(
-    'Y-m-d',
-    $availabilityDate
-);
+// Verify the token against the logged-in doctor's session.
+$submittedToken = $_POST['csrf_token'] ?? null;
+$sessionToken = $_SESSION['availability_csrf_token'] ?? null;
 
 if (
-    !$dateObject ||
-    $dateObject->format('Y-m-d') !== $availabilityDate
+    !is_string($submittedToken) ||
+    !is_string($sessionToken) ||
+    !hash_equals($sessionToken, $submittedToken)
 ) {
-    $_SESSION['availability_error'] =
-        'Please enter a valid availability date.';
-
-    header('Location: ../dashboards/doctor-dashboard.php');
-    exit;
+    availabilityCreateResponse(
+        'availability_error',
+        'Your session has changed. Reload the availability page and try again.'
+    );
 }
 
-/*
- * The start time must be earlier than the end time.
- */
+$doctorId = (int) ($_SESSION['user_id'] ?? 0);
+$availabilityDate = $_POST['availability_date'] ?? null;
+$startTime = $_POST['start_time'] ?? null;
+$endTime = $_POST['end_time'] ?? null;
+$slotDuration = 30; // Product Owner-approved appointment duration.
+
+if (
+    $doctorId < 1 ||
+    !is_string($availabilityDate) ||
+    !is_string($startTime) ||
+    !is_string($endTime)
+) {
+    availabilityCreateResponse(
+        'availability_error',
+        'Invalid availability information.'
+    );
+}
+
+$availabilityDate = trim($availabilityDate);
+$startTime = trim($startTime);
+$endTime = trim($endTime);
+
+if ($availabilityDate === '' || $startTime === '' || $endTime === '') {
+    availabilityCreateResponse(
+        'availability_error',
+        'Please enter the availability date, start time, and end time.'
+    );
+}
+
+$dateObject = DateTimeImmutable::createFromFormat('!Y-m-d', $availabilityDate);
+if (!$dateObject || $dateObject->format('Y-m-d') !== $availabilityDate) {
+    availabilityCreateResponse(
+        'availability_error',
+        'Please enter a valid availability date.'
+    );
+}
+
+// HTML time inputs normally submit HH:MM, but HH:MM:SS is also supported.
+$timePattern = '/^(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d)?$/';
+if (!preg_match($timePattern, $startTime) || !preg_match($timePattern, $endTime)) {
+    availabilityCreateResponse(
+        'availability_error',
+        'Please enter valid start and end times.'
+    );
+}
+
+if (strlen($startTime) === 5) {
+    $startTime .= ':00';
+}
+if (strlen($endTime) === 5) {
+    $endTime .= ':00';
+}
+
 if ($startTime >= $endTime) {
-    $_SESSION['availability_error'] =
-        'Start time must be earlier than end time.';
-
-    header('Location: ../dashboards/doctor-dashboard.php');
-    exit;
+    availabilityCreateResponse(
+        'availability_error',
+        'Start time must be earlier than end time.'
+    );
 }
 
-/*
- * Sprint 3 - US-08:
- * Begin a transaction and lock the doctor's database row.
- *
- * This ensures that simultaneous availability requests
- * for the same doctor are processed one at a time.
- */
-$conn->begin_transaction();
+// A new period must contain at least one 30-minute booking slot.
+$startSeconds = ((int) substr($startTime, 0, 2)) * 3600
+    + ((int) substr($startTime, 3, 2)) * 60
+    + (int) substr($startTime, 6, 2);
+$endSeconds = ((int) substr($endTime, 0, 2)) * 3600
+    + ((int) substr($endTime, 3, 2)) * 60
+    + (int) substr($endTime, 6, 2);
 
-$lockStmt = $conn->prepare(
-    "SELECT id
-     FROM users
-     WHERE id = ?
-     FOR UPDATE"
-);
-
-$lockStmt->bind_param("i", $doctorId);
-$lockStmt->execute();
-$lockStmt->close();
-
-/*
- * Sprint 3 - US-08:
- * Check whether the new availability overlaps
- * an existing period for the same doctor and date.
- */
-$overlapStmt = $conn->prepare(
-    "SELECT 1
-     FROM doctor_availability
-     WHERE doctor_id = ?
-       AND availability_date = ?
-       AND start_time < ?
-       AND end_time > ?
-     LIMIT 1"
-);
-
-$overlapStmt->bind_param(
-    "isss",
-    $doctorId,
-    $availabilityDate,
-    $endTime,
-    $startTime
-);
-
-$overlapStmt->execute();
-
-$overlapExists =
-    $overlapStmt->get_result()->num_rows > 0;
-
-$overlapStmt->close();
-
-
-if ($overlapExists) {
-    $_SESSION['availability_error'] =
-        'This availability period overlaps an existing period.';
-
-    $conn->rollback();
-    $conn->close();
-
-    header('Location: ../dashboards/doctor-dashboard.php');
-    exit;
+if ($endSeconds - $startSeconds < $slotDuration * 60) {
+    availabilityCreateResponse(
+        'availability_error',
+        'An availability period must be at least 30 minutes.'
+    );
 }
 
-/*
- * Insert the doctor's availability
- * using a prepared statement.
- */
-$stmt = $conn->prepare(
-    "INSERT INTO doctor_availability
-        (
-            doctor_id,
-            availability_date,
-            start_time,
-            end_time,
-            slot_duration_minutes
-        )
-     VALUES (?, ?, ?, ?, ?)"
-);
-
-$stmt->bind_param(
-    "isssi",
-    $doctorId,
-    $availabilityDate,
-    $startTime,
-    $endTime,
-    $slotDuration
-);
-
-/*
- * Execute the insert and store
- * a success or error message.
- */
+$transactionStarted = false;
 
 try {
-    if ($stmt->execute()) {
-        $conn->commit();
+    $conn->begin_transaction();
+    $transactionStarted = true;
 
-        $_SESSION['availability_success'] =
-            'Availability added successfully.';
-    } else {
-        $conn->rollback();
+    // Matches the doctor-row locking approach used by appointment booking.
+    $doctorStmt = $conn->prepare(
+        "SELECT id FROM users
+         WHERE id = ? AND role = 'doctor' AND account_status = 'active'
+         FOR UPDATE"
+    );
+    $doctorStmt->bind_param('i', $doctorId);
+    $doctorStmt->execute();
+    $doctorRecord = $doctorStmt->get_result()->fetch_assoc();
+    $doctorStmt->close();
 
-        $_SESSION['availability_error'] =
-            'Unable to add availability. Please try again.';
+    if (!$doctorRecord) {
+        throw new DomainException('Doctor account not found or inactive.');
     }
-} catch (mysqli_sql_exception $e) {
-    $conn->rollback();
 
-    $_SESSION['availability_error'] =
-        'Unable to add availability. Please try again.';
+    $overlapStmt = $conn->prepare(
+        "SELECT id FROM doctor_availability
+         WHERE doctor_id = ?
+           AND availability_date = ?
+           AND start_time < ?
+           AND end_time > ?
+         LIMIT 1"
+    );
+    $overlapStmt->bind_param(
+        'isss',
+        $doctorId,
+        $availabilityDate,
+        $endTime,
+        $startTime
+    );
+    $overlapStmt->execute();
+    $overlap = $overlapStmt->get_result()->fetch_assoc();
+    $overlapStmt->close();
+
+    if ($overlap) {
+        throw new DomainException(
+            'This availability period overlaps an existing period.'
+        );
+    }
+
+    $insertStmt = $conn->prepare(
+        'INSERT INTO doctor_availability
+            (doctor_id, availability_date, start_time, end_time, slot_duration_minutes)
+         VALUES (?, ?, ?, ?, ?)'
+    );
+    $insertStmt->bind_param(
+        'isssi',
+        $doctorId,
+        $availabilityDate,
+        $startTime,
+        $endTime,
+        $slotDuration
+    );
+    $insertStmt->execute();
+    $insertStmt->close();
+
+    $conn->commit();
+    $transactionStarted = false;
+    $conn->close();
+
+    availabilityCreateResponse(
+        'availability_success',
+        'Availability added successfully.'
+    );
+} catch (DomainException $e) {
+    if ($transactionStarted) {
+        $conn->rollback();
+    }
+    $conn->close();
+    availabilityCreateResponse('availability_error', $e->getMessage());
+} catch (Throwable $e) {
+    if ($transactionStarted) {
+        $conn->rollback();
+    }
+    $conn->close();
+    availabilityCreateResponse(
+        'availability_error',
+        'Unable to add availability. Please try again.'
+    );
 }
-
-
-$stmt->close();
-$conn->close();
-
-/*
- * Temporary Sprint 2 redirect.
- * We will redirect to the availability page
- * after Sonbol's UI is integrated.
- */
-header('Location: ../dashboards/doctor-dashboard.php');
-exit;
