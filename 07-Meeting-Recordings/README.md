@@ -6,6 +6,13 @@ This folder contains recordings of product backlog meetings and scrum meetings f
 
 https://drive.google.com/file/d/1CiU5gA2j1wwWQrs7Lyxct5azgjjPnrzG/view?usp=sharing
 
+
+2. Product Backlog Refinement 
+
+https://drive.google.com/file/d/1J2oseB_qXA8y5BcOh5H-8IcrQuvOKc6k/view?usp=sharing
+
+
+
 ## Sprint 1
 
 1. First Sprint Planning Meeting  
